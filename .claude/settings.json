@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Read(//c/Users/FinnBaerenwalde/dev/pdev/**)",
+      "Bash(php -v)",
+      "Bash(wsl -e bash -c \"cd ~/dev/pdev/alpha-collection && php -v\")",
+      "Bash(wsl -e bash -c \"ls ~/dev/pdev/alpha-collection\")",
+      "Bash(wsl -e bash -c \"ls ~/dev/pdev/alpha-collection/alpha-laravel && ls ~/dev/pdev/alpha-collection/backend && ls ~/dev/pdev/alpha-collection/frontend\")"
+    ]
+  }
+}
