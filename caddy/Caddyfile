@@ -1,0 +1,25 @@
+{$DOMAIN:localhost} {
+    tls {$ACME_EMAIL:off}
+
+    # Laravel Backend: API, Admin-Panel, Storage-Dateien
+    handle /api/* {
+        reverse_proxy backend:80
+    }
+
+    handle /storage/* {
+        reverse_proxy backend:80
+    }
+
+    handle /admin* {
+        reverse_proxy backend:80
+    }
+
+    handle /sanctum/* {
+        reverse_proxy backend:80
+    }
+
+    # React Frontend SPA
+    handle {
+        reverse_proxy frontend:80
+    }
+}
