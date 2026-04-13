@@ -1,6 +1,4 @@
-{$DOMAIN:localhost} {
-    tls {$ACME_EMAIL:off}
-
+http://{$DOMAIN:localhost} {
     # Laravel Backend: API, Admin-Panel, Storage-Dateien
     handle /api/* {
         reverse_proxy backend:80
