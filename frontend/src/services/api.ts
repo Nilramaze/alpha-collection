@@ -125,9 +125,21 @@ export const adminSettingsApi = {
 };
 
 export const announcementApi = {
-  get: () => api.get('/announcement'),
-  adminUpdate: (data: FormData) =>
-    api.post('/admin/announcement', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  list: () => api.get('/announcements'),
+};
+
+export const adminAnnouncementApi = {
+  list: () => api.get('/admin/announcements'),
+  create: (data: FormData) =>
+    api.post('/admin/announcements', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id: number, data: FormData) =>
+    api.post(`/admin/announcements/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  toggle: (id: number, enabled: boolean) =>
+    api.patch(`/admin/announcements/${id}`, { enabled }),
+  reorder: (ids: number[]) =>
+    api.post('/admin/announcements/reorder', { ids }),
+  destroy: (id: number) =>
+    api.delete(`/admin/announcements/${id}`),
 };
 
 export const adminSkontoApi = {

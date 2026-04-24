@@ -12,13 +12,15 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(searchParams.get('category') ?? '');
   const [page, setPage] = useState(1);
   const [meta, setMeta] = useState<any>(null);
 
   useEffect(() => {
     const q = searchParams.get('search') ?? '';
+    const cat = searchParams.get('category') ?? '';
     setSearch(q);
+    setCategory(cat);
   }, [searchParams]);
 
   const fetchProducts = useCallback(async () => {
@@ -62,7 +64,12 @@ export default function ProductsPage() {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              setSearchParams(e.target.value ? { search: e.target.value } : {});
+              setSearchParams(prev => {
+                const n = new URLSearchParams(prev);
+                if (e.target.value) n.set('search', e.target.value);
+                else n.delete('search');
+                return n;
+              });
             }}
             placeholder="SKU, Name..."
             className="input-field pl-10 py-2.5 text-sm w-56"
@@ -72,7 +79,7 @@ export default function ProductsPage() {
         {/* Category pills */}
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => setCategory('')}
+            onClick={() => setSearchParams(prev => { const n = new URLSearchParams(prev); n.delete('category'); return n; })}
             className={`px-4 py-2 text-xs font-bold transition-colors ${category === '' ? 'bg-brand-300 text-brand-800' : 'bg-white text-ink-variant hover:bg-surface-high'}`}
           >
             Alle
@@ -80,7 +87,7 @@ export default function ProductsPage() {
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => setCategory(cat.slug)}
+              onClick={() => setSearchParams(prev => { const n = new URLSearchParams(prev); n.set('category', cat.slug); return n; })}
               className={`px-4 py-2 text-xs font-bold transition-colors ${category === cat.slug ? 'bg-brand-300 text-brand-800' : 'bg-white text-ink-variant hover:bg-surface-high'}`}
             >
               {cat.name}

@@ -49,6 +49,19 @@ export interface Category {
   slug: string;
 }
 
+export interface Announcement {
+  id: number;
+  title: string;
+  text: string | null;
+  image_url: string | null;
+  gallery_images: (string | null)[];
+  title_size: string;
+  text_size: string;
+  background_color: string;
+  enabled: boolean;
+  sort_order: number;
+}
+
 export interface ProductColor {
   id: number;
   name: string;

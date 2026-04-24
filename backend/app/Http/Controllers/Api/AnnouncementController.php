@@ -3,42 +3,34 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Setting;
+use App\Models\Announcement;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class AnnouncementController extends Controller
 {
-    public function show(): JsonResponse
+    public function index(): JsonResponse
     {
-        return response()->json([
-            'data' => [
-                'enabled'   => (bool) Setting::get('announcement_enabled', false),
-                'title'     => Setting::get('announcement_title', ''),
-                'text'      => Setting::get('announcement_text', ''),
-                'image_url' => Setting::get('announcement_image_url', null),
-            ],
-        ]);
+        $announcements = Announcement::where('enabled', true)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn($a) => $this->format($a));
+
+        return response()->json(['data' => $announcements]);
     }
 
-    public function update(Request $request): JsonResponse
+    public static function format(Announcement $a): array
     {
-        $request->validate([
-            'enabled'   => 'required|boolean',
-            'title'     => 'required|string|max:255',
-            'text'      => 'nullable|string|max:2000',
-            'image'     => 'nullable|image|max:5120',
-        ]);
-
-        Setting::set('announcement_enabled', $request->boolean('enabled') ? '1' : '0');
-        Setting::set('announcement_title',   $request->input('title'));
-        Setting::set('announcement_text',    $request->input('text', ''));
-
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('announcements', 'public');
-            Setting::set('announcement_image_url', '/storage/' . $path);
-        }
-
-        return response()->json(['message' => 'Ankündigung gespeichert.']);
+        return [
+            'id'               => $a->id,
+            'title'            => $a->title,
+            'text'             => $a->text,
+            'image_url'        => $a->image_url,
+            'gallery_images'   => $a->gallery_images ?? [],
+            'title_size'       => $a->title_size,
+            'text_size'        => $a->text_size,
+            'background_color' => $a->background_color,
+            'enabled'          => $a->enabled,
+            'sort_order'       => $a->sort_order,
+        ];
     }
 }

@@ -1,36 +1,134 @@
 import { useEffect, useRef, useState } from 'react';
-import { adminSettingsApi, adminCategoryApi, adminSkontoApi, announcementApi } from '../../services/api';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { adminSettingsApi, adminCategoryApi, adminSkontoApi, adminAnnouncementApi } from '../../services/api';
+import type { Announcement } from '../../types';
 import toast from 'react-hot-toast';
 
-interface CategoryRow {
-  id: number;
-  name: string;
-  products_count: number;
+// ─────────────────────────────────────────────────────────────────
+// Sortable card component for each announcement row
+// ─────────────────────────────────────────────────────────────────
+function SortableAnnouncementCard({
+  ann, isEditing, onToggle, onEdit, onDelete,
+}: {
+  ann: Announcement;
+  isEditing: boolean;
+  onToggle: (enabled: boolean) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: ann.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-3 px-4 py-3 bg-white border transition-colors ${
+        isEditing ? 'border-brand-300' : 'border-surface-low'
+      }`}
+    >
+      {/* Drag handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="text-ink-faint hover:text-ink cursor-grab active:cursor-grabbing p-0.5 shrink-0"
+        tabIndex={-1}
+      >
+        <span className="material-symbols-outlined text-[20px]">drag_indicator</span>
+      </button>
+
+      {/* Status dot */}
+      <div className={`w-2 h-2 rounded-full shrink-0 ${ann.enabled ? 'bg-brand-300' : 'bg-surface-dim'}`} />
+
+      {/* Title */}
+      <span className="flex-1 text-sm font-semibold text-ink truncate min-w-0">
+        {ann.title || <span className="text-ink-faint italic">Ohne Titel</span>}
+      </span>
+
+      {/* Enabled toggle */}
+      <div
+        onClick={() => onToggle(!ann.enabled)}
+        className={`w-9 h-5 flex items-center rounded-none transition-colors cursor-pointer shrink-0 ${
+          ann.enabled ? 'bg-brand-300' : 'bg-surface-low'
+        }`}
+      >
+        <span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${
+          ann.enabled ? 'translate-x-[14px]' : 'translate-x-0'
+        }`} />
+      </div>
+
+      {/* Edit */}
+      <button onClick={onEdit} className="p-1.5 text-ink-faint hover:text-ink transition-colors shrink-0">
+        <span className="material-symbols-outlined text-[18px]">{isEditing ? 'expand_less' : 'edit'}</span>
+      </button>
+
+      {/* Delete */}
+      <button onClick={onDelete} className="p-1.5 text-ink-faint hover:text-red-500 transition-colors shrink-0">
+        <span className="material-symbols-outlined text-[18px]">delete</span>
+      </button>
+    </div>
+  );
 }
 
-interface SkontoTierRow {
-  id: number;
-  min_order_value: number;
-  discount_percent: number;
+// ─────────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────────
+interface CategoryRow { id: number; name: string; products_count: number; }
+interface SkontoTierRow { id: number; min_order_value: number; discount_percent: number; }
+interface SkontoGroupRow { id: number; name: string; users_count: number; tiers: SkontoTierRow[]; }
+
+interface EditForm {
+  title: string;
+  text: string;
+  title_size: string;
+  text_size: string;
+  background_color: string;
+  image_url: string | null;
+  gallery_images: (string | null)[];
 }
 
-interface SkontoGroupRow {
-  id: number;
-  name: string;
-  users_count: number;
-  tiers: SkontoTierRow[];
-}
+const EMPTY_GALLERY: (string | null)[] = [null, null, null, null, null];
+const EMPTY_FORM: EditForm = {
+  title: '', text: '', title_size: '48', text_size: '18',
+  background_color: '#0e0e0e', image_url: null,
+  gallery_images: [...EMPTY_GALLERY],
+};
 
+// ─────────────────────────────────────────────────────────────────
+// Main page
+// ─────────────────────────────────────────────────────────────────
 export default function AdminSettingsPage() {
+  // ── Settings ──────────────────────────────────────────────────
   const [greenMin, setGreenMin] = useState(100);
   const [yellowMin, setYellowMin] = useState(1);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-
   const [notificationEmail, setNotificationEmail] = useState('');
   const [notifyOnOrder, setNotifyOnOrder] = useState(false);
   const [notifyOnMessage, setNotifyOnMessage] = useState(false);
 
+  // ── Categories ────────────────────────────────────────────────
   const [categories, setCategories] = useState<CategoryRow[]>([]);
   const [catLoading, setCatLoading] = useState(true);
   const [newCatName, setNewCatName] = useState('');
@@ -39,26 +137,42 @@ export default function AdminSettingsPage() {
   const [editingName, setEditingName] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
 
-  // Skonto groups state
+  // ── Skonto groups ─────────────────────────────────────────────
   const [skontoGroups, setSkontoGroups] = useState<SkontoGroupRow[]>([]);
   const [skontoLoading, setSkontoLoading] = useState(true);
   const [newGroupName, setNewGroupName] = useState('');
   const [editingGroupId, setEditingGroupId] = useState<number | null>(null);
   const [editingGroupName, setEditingGroupName] = useState('');
   const editGroupRef = useRef<HTMLInputElement>(null);
-  // Per-group new tier form: { [groupId]: { min: string, pct: string } }
   const [newTier, setNewTier] = useState<Record<number, { min: string; pct: string }>>({});
-  // Per-tier editing: { [tierId]: { min: string, pct: string } }
   const [editingTier, setEditingTier] = useState<Record<number, { min: string; pct: string }>>({});
 
-  // Announcement
-  const [announcement, setAnnouncement] = useState({ enabled: false, title: '', text: '', image_url: null as string | null });
-  const [announcementLoading, setAnnouncementLoading] = useState(true);
-  const [announcementSaving, setAnnouncementSaving] = useState(false);
-  const [announcementImage, setAnnouncementImage] = useState<File | null>(null);
-  const [announcementPreview, setAnnouncementPreview] = useState<string | null>(null);
-  const announcementImageRef = useRef<HTMLInputElement>(null);
+  // ── Announcements ─────────────────────────────────────────────
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [annLoading, setAnnLoading] = useState(true);
+  const [editingAnnId, setEditingAnnId] = useState<number | 'new' | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>(EMPTY_FORM);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+  const [editGalleryFiles, setEditGalleryFiles] = useState<(File | null)[]>([null, null, null, null, null]);
+  const [editGalleryPreviews, setEditGalleryPreviews] = useState<(string | null)[]>([...EMPTY_GALLERY]);
+  const [editGalleryRemove, setEditGalleryRemove] = useState<boolean[]>([false, false, false, false, false]);
+  const [editSaving, setEditSaving] = useState(false);
+  const editImageRef = useRef<HTMLInputElement>(null);
+  const editGalleryRef1 = useRef<HTMLInputElement>(null);
+  const editGalleryRef2 = useRef<HTMLInputElement>(null);
+  const editGalleryRef3 = useRef<HTMLInputElement>(null);
+  const editGalleryRef4 = useRef<HTMLInputElement>(null);
+  const editGalleryRef5 = useRef<HTMLInputElement>(null);
+  const editGalleryRefs = [editGalleryRef1, editGalleryRef2, editGalleryRef3, editGalleryRef4, editGalleryRef5];
 
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  // ── Data loading ───────────────────────────────────────────────
   useEffect(() => {
     adminSettingsApi.get().then(({ data }) => {
       setGreenMin(data.data.stock_green_min);
@@ -71,189 +185,177 @@ export default function AdminSettingsPage() {
 
   const loadCategories = () => {
     setCatLoading(true);
-    adminCategoryApi.list()
-      .then(({ data }) => setCategories(data.data))
-      .finally(() => setCatLoading(false));
+    adminCategoryApi.list().then(({ data }) => setCategories(data.data)).finally(() => setCatLoading(false));
   };
-
   useEffect(() => { loadCategories(); }, []);
 
   const loadSkontoGroups = () => {
     setSkontoLoading(true);
-    adminSkontoApi.list()
-      .then(({ data }) => setSkontoGroups(data.data))
-      .finally(() => setSkontoLoading(false));
+    adminSkontoApi.list().then(({ data }) => setSkontoGroups(data.data)).finally(() => setSkontoLoading(false));
   };
-
   useEffect(() => { loadSkontoGroups(); }, []);
 
-  useEffect(() => {
-    announcementApi.get()
-      .then(({ data }) => setAnnouncement(data.data))
-      .finally(() => setAnnouncementLoading(false));
-  }, []);
-
-  const handleAnnouncementImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] ?? null;
-    setAnnouncementImage(file);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setAnnouncementPreview(url);
-    }
+  const loadAnnouncements = () => {
+    setAnnLoading(true);
+    adminAnnouncementApi.list().then(({ data }) => setAnnouncements(data.data)).finally(() => setAnnLoading(false));
   };
+  useEffect(() => { loadAnnouncements(); }, []);
 
-  const handleSaveAnnouncement = async () => {
-    setAnnouncementSaving(true);
-    try {
-      const fd = new FormData();
-      fd.append('enabled', announcement.enabled ? '1' : '0');
-      fd.append('title', announcement.title);
-      fd.append('text', announcement.text);
-      if (announcementImage) fd.append('image', announcementImage);
-      await announcementApi.adminUpdate(fd);
-      // Refresh to get stored image_url
-      const { data } = await announcementApi.get();
-      setAnnouncement(data.data);
-      setAnnouncementImage(null);
-      setAnnouncementPreview(null);
-      toast.success('Ankündigung gespeichert.');
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.');
-    } finally { setAnnouncementSaving(false); }
-  };
-
+  // ── Settings handlers ──────────────────────────────────────────
   const handleSave = async () => {
     setSaving(true);
     try {
-      await adminSettingsApi.update({
-        stock_green_min: greenMin,
-        stock_yellow_min: yellowMin,
-        notification_email: notificationEmail,
-        notify_on_order: notifyOnOrder,
-        notify_on_message: notifyOnMessage,
-      });
+      await adminSettingsApi.update({ stock_green_min: greenMin, stock_yellow_min: yellowMin,
+        notification_email: notificationEmail, notify_on_order: notifyOnOrder, notify_on_message: notifyOnMessage });
       toast.success('Einstellungen gespeichert.');
-    } catch {
-      toast.error('Fehler beim Speichern.');
-    } finally { setSaving(false); }
+    } catch { toast.error('Fehler beim Speichern.'); } finally { setSaving(false); }
   };
 
+  // ── Category handlers ──────────────────────────────────────────
   const handleAddCategory = async () => {
-    const name = newCatName.trim();
-    if (!name) return;
+    const name = newCatName.trim(); if (!name) return;
     setAddingCat(true);
-    try {
-      await adminCategoryApi.create(name);
-      setNewCatName('');
-      loadCategories();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Erstellen.');
-    } finally { setAddingCat(false); }
+    try { await adminCategoryApi.create(name); setNewCatName(''); loadCategories(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Erstellen.'); }
+    finally { setAddingCat(false); }
   };
-
-  const startEdit = (cat: CategoryRow) => {
-    setEditingId(cat.id);
-    setEditingName(cat.name);
-    setTimeout(() => editInputRef.current?.focus(), 50);
-  };
-
+  const startEdit = (cat: CategoryRow) => { setEditingId(cat.id); setEditingName(cat.name); setTimeout(() => editInputRef.current?.focus(), 50); };
   const handleUpdateCategory = async (id: number) => {
-    const name = editingName.trim();
-    if (!name) return;
-    try {
-      await adminCategoryApi.update(id, name);
-      setEditingId(null);
-      loadCategories();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.');
-    }
+    const name = editingName.trim(); if (!name) return;
+    try { await adminCategoryApi.update(id, name); setEditingId(null); loadCategories(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.'); }
   };
-
   const handleDeleteCategory = async (cat: CategoryRow) => {
     if (!confirm(`Kategorie "${cat.name}" wirklich löschen?`)) return;
-    try {
-      await adminCategoryApi.destroy(cat.id);
-      loadCategories();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.');
-    }
+    try { await adminCategoryApi.destroy(cat.id); loadCategories(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.'); }
   };
 
-  // ── Skonto handlers ─────────────────────────────
-
+  // ── Skonto handlers ────────────────────────────────────────────
   const handleAddGroup = async () => {
-    const name = newGroupName.trim();
-    if (!name) return;
-    try {
-      await adminSkontoApi.create(name);
-      setNewGroupName('');
-      loadSkontoGroups();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Erstellen.');
-    }
+    const name = newGroupName.trim(); if (!name) return;
+    try { await adminSkontoApi.create(name); setNewGroupName(''); loadSkontoGroups(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Erstellen.'); }
   };
-
-  const startEditGroup = (g: SkontoGroupRow) => {
-    setEditingGroupId(g.id);
-    setEditingGroupName(g.name);
-    setTimeout(() => editGroupRef.current?.focus(), 50);
-  };
-
+  const startEditGroup = (g: SkontoGroupRow) => { setEditingGroupId(g.id); setEditingGroupName(g.name); setTimeout(() => editGroupRef.current?.focus(), 50); };
   const handleUpdateGroup = async (id: number) => {
-    const name = editingGroupName.trim();
-    if (!name) return;
-    try {
-      await adminSkontoApi.update(id, name);
-      setEditingGroupId(null);
-      loadSkontoGroups();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.');
-    }
+    const name = editingGroupName.trim(); if (!name) return;
+    try { await adminSkontoApi.update(id, name); setEditingGroupId(null); loadSkontoGroups(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.'); }
   };
-
   const handleDeleteGroup = async (g: SkontoGroupRow) => {
     if (!confirm(`Gruppe "${g.name}" wirklich löschen?`)) return;
-    try {
-      await adminSkontoApi.destroy(g.id);
-      loadSkontoGroups();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.');
-    }
+    try { await adminSkontoApi.destroy(g.id); loadSkontoGroups(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.'); }
   };
-
   const handleAddTier = async (groupId: number) => {
-    const t = newTier[groupId];
-    if (!t?.min || !t?.pct) return;
-    try {
-      await adminSkontoApi.addTier(groupId, parseFloat(t.min), parseFloat(t.pct));
-      setNewTier((prev) => ({ ...prev, [groupId]: { min: '', pct: '' } }));
-      loadSkontoGroups();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Hinzufügen.');
+    const t = newTier[groupId]; if (!t?.min || !t?.pct) return;
+    try { await adminSkontoApi.addTier(groupId, parseFloat(t.min), parseFloat(t.pct)); setNewTier((p) => ({ ...p, [groupId]: { min: '', pct: '' } })); loadSkontoGroups(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Hinzufügen.'); }
+  };
+  const handleUpdateTier = async (groupId: number, tierId: number) => {
+    const t = editingTier[tierId]; if (!t) return;
+    try { await adminSkontoApi.updateTier(groupId, tierId, parseFloat(t.min), parseFloat(t.pct)); setEditingTier((p) => { const n = { ...p }; delete n[tierId]; return n; }); loadSkontoGroups(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.'); }
+  };
+  const handleDeleteTier = async (groupId: number, tierId: number) => {
+    try { await adminSkontoApi.destroyTier(groupId, tierId); loadSkontoGroups(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.'); }
+  };
+
+  // ── Announcement handlers ──────────────────────────────────────
+  const openEditAnn = (ann: Announcement | null) => {
+    setEditImageFile(null); setEditImagePreview(null);
+    setEditGalleryFiles([null, null, null, null, null]);
+    setEditGalleryPreviews([...EMPTY_GALLERY]);
+    setEditGalleryRemove([false, false, false, false, false]);
+    if (ann) {
+      setEditingAnnId(ann.id);
+      const gallery = ann.gallery_images?.length === 5 ? ann.gallery_images : [...EMPTY_GALLERY];
+      setEditForm({ title: ann.title, text: ann.text ?? '', title_size: ann.title_size, text_size: ann.text_size, background_color: ann.background_color, image_url: ann.image_url, gallery_images: gallery });
+    } else {
+      setEditingAnnId('new');
+      setEditForm({ ...EMPTY_FORM, gallery_images: [...EMPTY_GALLERY] });
     }
   };
 
-  const handleUpdateTier = async (groupId: number, tierId: number) => {
-    const t = editingTier[tierId];
-    if (!t) return;
+  const closeEditAnn = () => { setEditingAnnId(null); };
+
+  const handleToggleAnn = async (ann: Announcement, enabled: boolean) => {
+    setAnnouncements(prev => prev.map(a => a.id === ann.id ? { ...a, enabled } : a));
+    try { await adminAnnouncementApi.toggle(ann.id, enabled); }
+    catch { loadAnnouncements(); toast.error('Fehler beim Aktualisieren.'); }
+  };
+
+  const handleDeleteAnn = async (ann: Announcement) => {
+    if (!confirm(`Ankündigung "${ann.title || 'Ohne Titel'}" wirklich löschen?`)) return;
     try {
-      await adminSkontoApi.updateTier(groupId, tierId, parseFloat(t.min), parseFloat(t.pct));
-      setEditingTier((prev) => { const n = { ...prev }; delete n[tierId]; return n; });
-      loadSkontoGroups();
+      await adminAnnouncementApi.destroy(ann.id);
+      setAnnouncements(prev => prev.filter(a => a.id !== ann.id));
+      if (editingAnnId === ann.id) setEditingAnnId(null);
+    } catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.'); }
+  };
+
+  const handleSaveAnn = async () => {
+    if (!editForm) return;
+    setEditSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('title', editForm.title);
+      fd.append('text', editForm.text);
+      fd.append('title_size', editForm.title_size);
+      fd.append('text_size', editForm.text_size);
+      fd.append('background_color', editForm.background_color);
+      if (editImageFile) fd.append('image', editImageFile);
+      editGalleryFiles.forEach((file, i) => { if (file) fd.append(`gallery_${i + 1}`, file); });
+      editGalleryRemove.forEach((remove, i) => { if (remove) fd.append(`remove_gallery_${i + 1}`, '1'); });
+      if (editingAnnId === 'new') {
+        await adminAnnouncementApi.create(fd);
+      } else {
+        await adminAnnouncementApi.update(editingAnnId as number, fd);
+      }
+      await loadAnnouncements();
+      setEditingAnnId(null);
+      toast.success('Ankündigung gespeichert.');
     } catch (e: any) {
       toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.');
-    }
+    } finally { setEditSaving(false); }
   };
 
-  const handleDeleteTier = async (groupId: number, tierId: number) => {
-    try {
-      await adminSkontoApi.destroyTier(groupId, tierId);
-      loadSkontoGroups();
-    } catch (e: any) {
-      toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.');
-    }
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = announcements.findIndex(a => a.id === active.id);
+    const newIdx = announcements.findIndex(a => a.id === over.id);
+    const reordered = arrayMove(announcements, oldIdx, newIdx);
+    setAnnouncements(reordered);
+    try { await adminAnnouncementApi.reorder(reordered.map(a => a.id)); }
+    catch { loadAnnouncements(); }
   };
 
+  // ── Announcement edit form helpers ─────────────────────────────
+  const setEF = (patch: Partial<EditForm>) => setEditForm(f => ({ ...f, ...patch }));
+
+  const handleEditImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setEditImageFile(file);
+    setEditImagePreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const handleGalleryFileChange = (i: number, file: File | null) => {
+    if (!file) return;
+    const f = [...editGalleryFiles]; f[i] = file; setEditGalleryFiles(f);
+    const p = [...editGalleryPreviews]; p[i] = URL.createObjectURL(file); setEditGalleryPreviews(p);
+    const r = [...editGalleryRemove]; r[i] = false; setEditGalleryRemove(r);
+  };
+
+  const handleGalleryRemove = (i: number) => {
+    const r = [...editGalleryRemove]; r[i] = true; setEditGalleryRemove(r);
+    const f = [...editGalleryFiles]; f[i] = null; setEditGalleryFiles(f);
+    const p = [...editGalleryPreviews]; p[i] = null; setEditGalleryPreviews(p);
+  };
+
+  // ─────────────────────────────────────────────────────────────
   return (
     <div className="max-w-lg space-y-8">
       <div className="mb-2">
@@ -265,55 +367,18 @@ export default function AdminSettingsPage() {
       <div className="bg-white p-8">
         <h2 className="text-lg font-bold text-ink font-headline mb-1">Lagerbestand-Ampel</h2>
         <p className="text-sm text-ink-variant mb-6">Legt fest, ab welcher Stückzahl welche Farbe angezeigt wird.</p>
-
         {loading ? (
-          <div className="space-y-4">
-            <div className="h-16 bg-surface-low animate-pulse" />
-            <div className="h-16 bg-surface-low animate-pulse" />
-          </div>
+          <div className="space-y-4"><div className="h-16 bg-surface-low animate-pulse" /><div className="h-16 bg-surface-low animate-pulse" /></div>
         ) : (
           <div className="space-y-6">
             <div className="flex items-stretch gap-0 text-xs font-bold text-center overflow-hidden border border-surface-low">
-              <div className="flex-1 bg-red-50 text-red-700 py-3 px-2">
-                <div className="w-3 h-3 rounded-full bg-red-500 mx-auto mb-1" />
-                Rot
-                <div className="font-normal text-[10px] mt-0.5">0 – {yellowMin - 1} Stk.</div>
-              </div>
-              <div className="flex-1 bg-amber-50 text-amber-700 py-3 px-2 border-x border-surface-low">
-                <div className="w-3 h-3 rounded-full bg-amber-400 mx-auto mb-1" />
-                Gelb
-                <div className="font-normal text-[10px] mt-0.5">{yellowMin} – {greenMin - 1} Stk.</div>
-              </div>
-              <div className="flex-1 bg-green-50 text-green-700 py-3 px-2">
-                <div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-1" />
-                Grün
-                <div className="font-normal text-[10px] mt-0.5">≥ {greenMin} Stk.</div>
-              </div>
+              <div className="flex-1 bg-red-50 text-red-700 py-3 px-2"><div className="w-3 h-3 rounded-full bg-red-500 mx-auto mb-1" />Rot<div className="font-normal text-[10px] mt-0.5">0 – {yellowMin - 1} Stk.</div></div>
+              <div className="flex-1 bg-amber-50 text-amber-700 py-3 px-2 border-x border-surface-low"><div className="w-3 h-3 rounded-full bg-amber-400 mx-auto mb-1" />Gelb<div className="font-normal text-[10px] mt-0.5">{yellowMin} – {greenMin - 1} Stk.</div></div>
+              <div className="flex-1 bg-green-50 text-green-700 py-3 px-2"><div className="w-3 h-3 rounded-full bg-green-500 mx-auto mb-1" />Grün<div className="font-normal text-[10px] mt-0.5">≥ {greenMin} Stk.</div></div>
             </div>
-
-            <div>
-              <label className="label-caps">Gelb ab (min. Stückzahl)</label>
-              <div className="flex items-center gap-3">
-                <input type="number" min={1} value={yellowMin}
-                  onChange={(e) => setYellowMin(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="input-field w-32" />
-                <span className="text-sm text-ink-variant">Stück → gelbe Ampel</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="label-caps">Grün ab (min. Stückzahl)</label>
-              <div className="flex items-center gap-3">
-                <input type="number" min={yellowMin + 1} value={greenMin}
-                  onChange={(e) => setGreenMin(Math.max(yellowMin + 1, parseInt(e.target.value) || yellowMin + 1))}
-                  className="input-field w-32" />
-                <span className="text-sm text-ink-variant">Stück → grüne Ampel</span>
-              </div>
-            </div>
-
-            <button onClick={handleSave} disabled={saving} className="btn-primary px-6 py-3 disabled:opacity-50">
-              {saving ? 'Speichern...' : 'Einstellungen speichern'}
-            </button>
+            <div><label className="label-caps">Gelb ab (min. Stückzahl)</label><div className="flex items-center gap-3"><input type="number" min={1} value={yellowMin} onChange={(e) => setYellowMin(Math.max(1, parseInt(e.target.value) || 1))} className="input-field w-32" /><span className="text-sm text-ink-variant">Stück → gelbe Ampel</span></div></div>
+            <div><label className="label-caps">Grün ab (min. Stückzahl)</label><div className="flex items-center gap-3"><input type="number" min={yellowMin + 1} value={greenMin} onChange={(e) => setGreenMin(Math.max(yellowMin + 1, parseInt(e.target.value) || yellowMin + 1))} className="input-field w-32" /><span className="text-sm text-ink-variant">Stück → grüne Ampel</span></div></div>
+            <button onClick={handleSave} disabled={saving} className="btn-primary px-6 py-3 disabled:opacity-50">{saving ? 'Speichern...' : 'Einstellungen speichern'}</button>
           </div>
         )}
       </div>
@@ -322,48 +387,20 @@ export default function AdminSettingsPage() {
       <div className="bg-white p-8">
         <h2 className="text-lg font-bold text-ink font-headline mb-1">E-Mail-Benachrichtigungen</h2>
         <p className="text-sm text-ink-variant mb-6">Empfänger-Adresse und Auslöser für automatische Mails.</p>
-
         {loading ? (
-          <div className="space-y-3">
-            <div className="h-10 bg-surface-low animate-pulse" />
-            <div className="h-10 bg-surface-low animate-pulse" />
-          </div>
+          <div className="space-y-3"><div className="h-10 bg-surface-low animate-pulse" /><div className="h-10 bg-surface-low animate-pulse" /></div>
         ) : (
           <div className="space-y-5">
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">
-                Empfänger-E-Mail
-              </label>
-              <input
-                type="email"
-                value={notificationEmail}
-                onChange={(e) => setNotificationEmail(e.target.value)}
-                placeholder="admin@beispiel.de"
-                className="input-field w-full"
-              />
-            </div>
-
+            <div><label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Empfänger-E-Mail</label><input type="email" value={notificationEmail} onChange={(e) => setNotificationEmail(e.target.value)} placeholder="admin@beispiel.de" className="input-field w-full" /></div>
             <div className="space-y-3 pt-1">
-              {[
-                { label: 'Bei neuer Bestellung', value: notifyOnOrder, set: setNotifyOnOrder },
-                { label: 'Bei neuer Nachricht', value: notifyOnMessage, set: setNotifyOnMessage },
-              ].map(({ label, value, set }) => (
+              {[{ label: 'Bei neuer Bestellung', value: notifyOnOrder, set: setNotifyOnOrder }, { label: 'Bei neuer Nachricht', value: notifyOnMessage, set: setNotifyOnMessage }].map(({ label, value, set }) => (
                 <label key={label} className="flex items-center gap-3 cursor-pointer select-none">
-                  <div
-                    onClick={() => set(!value)}
-                    className={`w-10 h-5 flex items-center rounded-none transition-colors cursor-pointer ${value ? 'bg-brand-300' : 'bg-surface-low'}`}
-                  >
-                    <span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${value ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </div>
+                  <div onClick={() => set(!value)} className={`w-10 h-5 flex items-center rounded-none transition-colors cursor-pointer ${value ? 'bg-brand-300' : 'bg-surface-low'}`}><span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${value ? 'translate-x-5' : 'translate-x-0'}`} /></div>
                   <span className="text-sm text-ink font-medium">{label}</span>
                 </label>
               ))}
             </div>
-
-            <p className="text-[11px] text-ink-faint">
-              Mails werden nur versendet wenn eine Empfänger-Adresse eingetragen und der jeweilige Toggle aktiv ist.
-              Der Versand nutzt die in <code className="bg-surface-low px-1">.env</code> konfigurierte Mail-Verbindung.
-            </p>
+            <p className="text-[11px] text-ink-faint">Mails werden nur versendet wenn eine Empfänger-Adresse eingetragen und der jeweilige Toggle aktiv ist. Der Versand nutzt die in <code className="bg-surface-low px-1">.env</code> konfigurierte Mail-Verbindung.</p>
           </div>
         )}
       </div>
@@ -372,147 +409,58 @@ export default function AdminSettingsPage() {
       <div className="bg-white p-8">
         <h2 className="text-lg font-bold text-ink font-headline mb-1">Skonto-Gruppen</h2>
         <p className="text-sm text-ink-variant mb-6">Rabattgruppen und Staffelkonditionen verwalten.</p>
-
-        {/* New group */}
         <div className="flex gap-2 mb-6">
-          <input
-            className="input-field flex-1 text-sm"
-            placeholder="Neue Gruppe..."
-            value={newGroupName}
-            onChange={(e) => setNewGroupName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddGroup()}
-          />
-          <button
-            onClick={handleAddGroup}
-            disabled={!newGroupName.trim()}
-            className="btn-primary px-4 py-2 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-          </button>
+          <input className="input-field flex-1 text-sm" placeholder="Neue Gruppe..." value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddGroup()} />
+          <button onClick={handleAddGroup} disabled={!newGroupName.trim()} className="btn-primary px-4 py-2 disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span></button>
         </div>
-
         {skontoLoading ? (
-          <div className="space-y-3">
-            {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-surface-low animate-pulse" />)}
-          </div>
+          <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-surface-low animate-pulse" />)}</div>
         ) : skontoGroups.length === 0 ? (
           <p className="text-sm text-ink-faint py-4 text-center">Noch keine Gruppen.</p>
         ) : (
           <div className="space-y-4">
             {skontoGroups.map((group) => (
               <div key={group.id} className="border border-surface-low">
-                {/* Group header */}
                 <div className="flex items-center gap-2 px-4 py-3 bg-surface/50">
                   {editingGroupId === group.id ? (
-                    <input
-                      ref={editGroupRef}
-                      className="input-field flex-1 text-sm py-1"
-                      value={editingGroupName}
-                      onChange={(e) => setEditingGroupName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleUpdateGroup(group.id);
-                        if (e.key === 'Escape') setEditingGroupId(null);
-                      }}
-                      onBlur={() => handleUpdateGroup(group.id)}
-                    />
+                    <input ref={editGroupRef} className="input-field flex-1 text-sm py-1" value={editingGroupName} onChange={(e) => setEditingGroupName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateGroup(group.id); if (e.key === 'Escape') setEditingGroupId(null); }} onBlur={() => handleUpdateGroup(group.id)} />
                   ) : (
                     <span className="flex-1 text-sm font-bold text-ink">{group.name}</span>
                   )}
                   <span className="text-[10px] text-ink-outline shrink-0">{group.users_count} Nutzer</span>
                   {editingGroupId === group.id ? (
-                    <button onClick={() => setEditingGroupId(null)} className="p-1 text-ink-faint hover:text-ink">
-                      <span className="material-symbols-outlined text-[16px]">close</span>
-                    </button>
+                    <button onClick={() => setEditingGroupId(null)} className="p-1 text-ink-faint hover:text-ink"><span className="material-symbols-outlined text-[16px]">close</span></button>
                   ) : (
-                    <button onClick={() => startEditGroup(group)} className="p-1 text-ink-faint hover:text-ink">
-                      <span className="material-symbols-outlined text-[16px]">edit</span>
-                    </button>
+                    <button onClick={() => startEditGroup(group)} className="p-1 text-ink-faint hover:text-ink"><span className="material-symbols-outlined text-[16px]">edit</span></button>
                   )}
-                  <button onClick={() => handleDeleteGroup(group)} className="p-1 text-ink-faint hover:text-red-500">
-                    <span className="material-symbols-outlined text-[16px]">delete</span>
-                  </button>
+                  <button onClick={() => handleDeleteGroup(group)} className="p-1 text-ink-faint hover:text-red-500"><span className="material-symbols-outlined text-[16px]">delete</span></button>
                 </div>
-
-                {/* Tiers */}
                 <div className="px-4 py-3 space-y-2">
-                  {/* Header row */}
-                  <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-ink-outline mb-1">
-                    <span>Ab Bestellwert (€)</span>
-                    <span>Rabatt (%)</span>
-                    <span />
-                    <span />
-                  </div>
-
-                  {group.tiers.length === 0 && (
-                    <p className="text-xs text-ink-faint italic">Noch keine Staffeln.</p>
-                  )}
-
+                  <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-ink-outline mb-1"><span>Ab Bestellwert (€)</span><span>Rabatt (%)</span><span /><span /></div>
+                  {group.tiers.length === 0 && <p className="text-xs text-ink-faint italic">Noch keine Staffeln.</p>}
                   {group.tiers.map((tier) => (
                     <div key={tier.id} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
                       {editingTier[tier.id] ? (
                         <>
-                          <input
-                            type="number" min="0" step="0.01"
-                            className="input-field text-sm py-1.5"
-                            value={editingTier[tier.id].min}
-                            onChange={(e) => setEditingTier((p) => ({ ...p, [tier.id]: { ...p[tier.id], min: e.target.value } }))}
-                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateTier(group.id, tier.id)}
-                          />
-                          <input
-                            type="number" min="0.01" max="100" step="0.01"
-                            className="input-field text-sm py-1.5"
-                            value={editingTier[tier.id].pct}
-                            onChange={(e) => setEditingTier((p) => ({ ...p, [tier.id]: { ...p[tier.id], pct: e.target.value } }))}
-                            onKeyDown={(e) => e.key === 'Enter' && handleUpdateTier(group.id, tier.id)}
-                          />
-                          <button onClick={() => handleUpdateTier(group.id, tier.id)} className="p-1 text-brand-500 hover:text-brand-700">
-                            <span className="material-symbols-outlined text-[16px]">check</span>
-                          </button>
-                          <button onClick={() => setEditingTier((p) => { const n = { ...p }; delete n[tier.id]; return n; })} className="p-1 text-ink-faint hover:text-ink">
-                            <span className="material-symbols-outlined text-[16px]">close</span>
-                          </button>
+                          <input type="number" min="0" step="0.01" className="input-field text-sm py-1.5" value={editingTier[tier.id].min} onChange={(e) => setEditingTier((p) => ({ ...p, [tier.id]: { ...p[tier.id], min: e.target.value } }))} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTier(group.id, tier.id)} />
+                          <input type="number" min="0.01" max="100" step="0.01" className="input-field text-sm py-1.5" value={editingTier[tier.id].pct} onChange={(e) => setEditingTier((p) => ({ ...p, [tier.id]: { ...p[tier.id], pct: e.target.value } }))} onKeyDown={(e) => e.key === 'Enter' && handleUpdateTier(group.id, tier.id)} />
+                          <button onClick={() => handleUpdateTier(group.id, tier.id)} className="p-1 text-brand-500 hover:text-brand-700"><span className="material-symbols-outlined text-[16px]">check</span></button>
+                          <button onClick={() => setEditingTier((p) => { const n = { ...p }; delete n[tier.id]; return n; })} className="p-1 text-ink-faint hover:text-ink"><span className="material-symbols-outlined text-[16px]">close</span></button>
                         </>
                       ) : (
                         <>
                           <span className="text-sm text-ink">ab € {Number(tier.min_order_value).toLocaleString('de-DE', { minimumFractionDigits: 2 })}</span>
                           <span className="text-sm font-semibold text-brand-700">{Number(tier.discount_percent).toFixed(2)} %</span>
-                          <button
-                            onClick={() => setEditingTier((p) => ({ ...p, [tier.id]: { min: String(tier.min_order_value), pct: String(tier.discount_percent) } }))}
-                            className="p-1 text-ink-faint hover:text-ink"
-                          >
-                            <span className="material-symbols-outlined text-[16px]">edit</span>
-                          </button>
-                          <button onClick={() => handleDeleteTier(group.id, tier.id)} className="p-1 text-ink-faint hover:text-red-500">
-                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                          </button>
+                          <button onClick={() => setEditingTier((p) => ({ ...p, [tier.id]: { min: String(tier.min_order_value), pct: String(tier.discount_percent) } }))} className="p-1 text-ink-faint hover:text-ink"><span className="material-symbols-outlined text-[16px]">edit</span></button>
+                          <button onClick={() => handleDeleteTier(group.id, tier.id)} className="p-1 text-ink-faint hover:text-red-500"><span className="material-symbols-outlined text-[16px]">delete</span></button>
                         </>
                       )}
                     </div>
                   ))}
-
-                  {/* Add tier row */}
                   <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center pt-1 border-t border-surface-low mt-2">
-                    <input
-                      type="number" min="0" step="0.01"
-                      className="input-field text-sm py-1.5"
-                      placeholder="Ab € ..."
-                      value={newTier[group.id]?.min ?? ''}
-                      onChange={(e) => setNewTier((p) => ({ ...p, [group.id]: { ...p[group.id], min: e.target.value, pct: p[group.id]?.pct ?? '' } }))}
-                    />
-                    <input
-                      type="number" min="0.01" max="100" step="0.01"
-                      className="input-field text-sm py-1.5"
-                      placeholder="Rabatt %"
-                      value={newTier[group.id]?.pct ?? ''}
-                      onChange={(e) => setNewTier((p) => ({ ...p, [group.id]: { ...p[group.id], pct: e.target.value, min: p[group.id]?.min ?? '' } }))}
-                    />
-                    <button
-                      onClick={() => handleAddTier(group.id)}
-                      disabled={!newTier[group.id]?.min || !newTier[group.id]?.pct}
-                      className="p-1.5 text-brand-500 hover:text-brand-700 disabled:opacity-30"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">add</span>
-                    </button>
+                    <input type="number" min="0" step="0.01" className="input-field text-sm py-1.5" placeholder="Ab € ..." value={newTier[group.id]?.min ?? ''} onChange={(e) => setNewTier((p) => ({ ...p, [group.id]: { ...p[group.id], min: e.target.value, pct: p[group.id]?.pct ?? '' } }))} />
+                    <input type="number" min="0.01" max="100" step="0.01" className="input-field text-sm py-1.5" placeholder="Rabatt %" value={newTier[group.id]?.pct ?? ''} onChange={(e) => setNewTier((p) => ({ ...p, [group.id]: { ...p[group.id], pct: e.target.value, min: p[group.id]?.min ?? '' } }))} />
+                    <button onClick={() => handleAddTier(group.id)} disabled={!newTier[group.id]?.min || !newTier[group.id]?.pct} className="p-1.5 text-brand-500 hover:text-brand-700 disabled:opacity-30"><span className="material-symbols-outlined text-[18px]">add</span></button>
                   </div>
                 </div>
               </div>
@@ -525,30 +473,12 @@ export default function AdminSettingsPage() {
       <div className="bg-white p-8">
         <h2 className="text-lg font-bold text-ink font-headline mb-1">Kategorien</h2>
         <p className="text-sm text-ink-variant mb-6">Material- und Produktkategorien verwalten.</p>
-
-        {/* Add new */}
         <div className="flex gap-2 mb-4">
-          <input
-            className="input-field flex-1 text-sm"
-            placeholder="Neue Kategorie..."
-            value={newCatName}
-            onChange={(e) => setNewCatName(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
-          />
-          <button
-            onClick={handleAddCategory}
-            disabled={addingCat || !newCatName.trim()}
-            className="btn-primary px-4 py-2 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-          </button>
+          <input className="input-field flex-1 text-sm" placeholder="Neue Kategorie..." value={newCatName} onChange={(e) => setNewCatName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()} />
+          <button onClick={handleAddCategory} disabled={addingCat || !newCatName.trim()} className="btn-primary px-4 py-2 disabled:opacity-50"><span className="material-symbols-outlined text-[18px]">add</span></button>
         </div>
-
-        {/* List */}
         {catLoading ? (
-          <div className="space-y-2">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-surface-low animate-pulse" />)}
-          </div>
+          <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-surface-low animate-pulse" />)}</div>
         ) : categories.length === 0 ? (
           <p className="text-sm text-ink-faint py-4 text-center">Noch keine Kategorien.</p>
         ) : (
@@ -556,127 +486,201 @@ export default function AdminSettingsPage() {
             {categories.map((cat) => (
               <div key={cat.id} className="flex items-center gap-3 py-2.5">
                 {editingId === cat.id ? (
-                  <input
-                    ref={editInputRef}
-                    className="input-field flex-1 text-sm py-1.5"
-                    value={editingName}
-                    onChange={(e) => setEditingName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleUpdateCategory(cat.id);
-                      if (e.key === 'Escape') setEditingId(null);
-                    }}
-                    onBlur={() => handleUpdateCategory(cat.id)}
-                  />
+                  <input ref={editInputRef} className="input-field flex-1 text-sm py-1.5" value={editingName} onChange={(e) => setEditingName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateCategory(cat.id); if (e.key === 'Escape') setEditingId(null); }} onBlur={() => handleUpdateCategory(cat.id)} />
                 ) : (
                   <span className="flex-1 text-sm font-medium text-ink">{cat.name}</span>
                 )}
                 <span className="text-[10px] text-ink-outline shrink-0">{cat.products_count} Produkte</span>
                 {editingId === cat.id ? (
-                  <button onClick={() => setEditingId(null)} className="p-1.5 text-ink-faint hover:text-ink transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">close</span>
-                  </button>
+                  <button onClick={() => setEditingId(null)} className="p-1.5 text-ink-faint hover:text-ink transition-colors"><span className="material-symbols-outlined text-[18px]">close</span></button>
                 ) : (
-                  <button onClick={() => startEdit(cat)} className="p-1.5 text-ink-faint hover:text-ink transition-colors">
-                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                  </button>
+                  <button onClick={() => startEdit(cat)} className="p-1.5 text-ink-faint hover:text-ink transition-colors"><span className="material-symbols-outlined text-[18px]">edit</span></button>
                 )}
-                <button onClick={() => handleDeleteCategory(cat)} className="p-1.5 text-ink-faint hover:text-red-500 transition-colors">
-                  <span className="material-symbols-outlined text-[18px]">delete</span>
-                </button>
+                <button onClick={() => handleDeleteCategory(cat)} className="p-1.5 text-ink-faint hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-[18px]">delete</span></button>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* ── Ankündigung / Hero-Banner ───────────────── */}
+      {/* ── Ankündigungen ──────────────────────────── */}
       <div className="bg-white p-8">
-        <h2 className="text-lg font-bold text-ink font-headline mb-1">Ankündigung</h2>
-        <p className="text-sm text-ink-variant mb-6">Wird als Hero-Banner oben auf der Startseite angezeigt.</p>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-lg font-bold text-ink font-headline">Ankündigungen</h2>
+          <button
+            onClick={() => editingAnnId === 'new' ? closeEditAnn() : openEditAnn(null)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-500 hover:text-brand-700 transition-colors border border-brand-200 hover:border-brand-300"
+          >
+            <span className="material-symbols-outlined text-[16px]">{editingAnnId === 'new' ? 'close' : 'add'}</span>
+            {editingAnnId === 'new' ? 'Abbrechen' : 'Neue Ankündigung'}
+          </button>
+        </div>
+        <p className="text-sm text-ink-variant mb-6">
+          Jede Ankündigung kann separat aktiviert werden. Reihenfolge per Drag & Drop ändern.
+        </p>
 
-        {announcementLoading ? (
-          <div className="space-y-3">
-            {[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-surface-low animate-pulse" />)}
-          </div>
-        ) : (
-          <div className="space-y-5">
-            {/* Toggle */}
-            <label className="flex items-center gap-3 cursor-pointer select-none">
-              <div
-                onClick={() => setAnnouncement((a) => ({ ...a, enabled: !a.enabled }))}
-                className={`w-10 h-5 flex items-center rounded-none transition-colors cursor-pointer ${
-                  announcement.enabled ? 'bg-brand-300' : 'bg-surface-low'
-                }`}
-              >
-                <span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${
-                  announcement.enabled ? 'translate-x-5' : 'translate-x-0'
-                }`} />
-              </div>
-              <span className="text-sm font-medium text-ink">
-                {announcement.enabled ? 'Aktiv – wird auf der Startseite angezeigt' : 'Inaktiv – nicht sichtbar'}
-              </span>
-            </label>
-
-            {/* Title */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Titel</label>
-              <input
-                type="text"
-                value={announcement.title}
-                onChange={(e) => setAnnouncement((a) => ({ ...a, title: e.target.value }))}
-                placeholder="Ankündigung Titel"
-                className="input-field w-full"
-              />
+        {/* New announcement form */}
+        {editingAnnId === 'new' && (
+          <div className="mb-4 border border-brand-300/40 bg-surface p-5 space-y-4">
+            <p className="text-xs font-bold text-ink uppercase tracking-widest">Neue Ankündigung</p>
+            <AnnouncementEditFields
+              form={editForm} onFormChange={setEF}
+              imageRef={editImageRef} imagePreview={editImagePreview}
+              onImageChange={handleEditImageChange}
+              galleryFiles={editGalleryFiles} galleryPreviews={editGalleryPreviews}
+              galleryRemove={editGalleryRemove} galleryRefs={editGalleryRefs}
+              onGalleryChange={handleGalleryFileChange} onGalleryRemove={handleGalleryRemove}
+            />
+            <div className="flex gap-3 pt-1">
+              <button onClick={handleSaveAnn} disabled={editSaving || !editForm.title.trim()} className="btn-primary px-5 py-2.5 disabled:opacity-50 text-sm">{editSaving ? 'Speichern...' : 'Erstellen'}</button>
+              <button onClick={closeEditAnn} className="btn-outline px-5 py-2.5 text-sm">Abbrechen</button>
             </div>
-
-            {/* Text */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Text</label>
-              <textarea
-                rows={3}
-                value={announcement.text}
-                onChange={(e) => setAnnouncement((a) => ({ ...a, text: e.target.value }))}
-                placeholder="Optionaler Beschreibungstext..."
-                className="input-field w-full resize-none"
-              />
-            </div>
-
-            {/* Image */}
-            <div>
-              <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-2">Bild</label>
-              {(announcementPreview ?? announcement.image_url) && (
-                <img
-                  src={announcementPreview ?? announcement.image_url!}
-                  alt="Vorschau"
-                  className="w-full max-h-48 object-cover mb-3"
-                />
-              )}
-              <input
-                ref={announcementImageRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAnnouncementImageChange}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => announcementImageRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2 border border-surface-low text-sm text-ink-variant hover:border-ink-outline hover:text-ink transition-colors"
-              >
-                <span className="material-symbols-outlined text-[18px]">upload</span>
-                {announcement.image_url || announcementPreview ? 'Bild ersetzen' : 'Bild hochladen'}
-              </button>
-            </div>
-
-            <button
-              onClick={handleSaveAnnouncement}
-              disabled={announcementSaving}
-              className="btn-primary px-5 py-2.5 disabled:opacity-50"
-            >
-              {announcementSaving ? 'Speichern...' : 'Ankündigung speichern'}
-            </button>
           </div>
         )}
+
+        {/* Sortable list */}
+        {annLoading ? (
+          <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-surface-low animate-pulse" />)}</div>
+        ) : announcements.length === 0 ? (
+          <p className="text-sm text-ink-faint py-4 text-center">Noch keine Ankündigungen. Oben eine neue erstellen.</p>
+        ) : (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={announcements.map(a => a.id)} strategy={verticalListSortingStrategy}>
+              <div className="space-y-2">
+                {announcements.map((ann) => (
+                  <div key={ann.id}>
+                    <SortableAnnouncementCard
+                      ann={ann}
+                      isEditing={editingAnnId === ann.id}
+                      onToggle={(enabled) => handleToggleAnn(ann, enabled)}
+                      onEdit={() => editingAnnId === ann.id ? closeEditAnn() : openEditAnn(ann)}
+                      onDelete={() => handleDeleteAnn(ann)}
+                    />
+                    {/* Inline edit panel */}
+                    {editingAnnId === ann.id && (
+                      <div className="border border-brand-300/40 border-t-0 bg-surface p-5 space-y-4">
+                        <AnnouncementEditFields
+                          form={editForm} onFormChange={setEF}
+                          imageRef={editImageRef} imagePreview={editImagePreview}
+                          onImageChange={handleEditImageChange}
+                          galleryFiles={editGalleryFiles} galleryPreviews={editGalleryPreviews}
+                          galleryRemove={editGalleryRemove} galleryRefs={editGalleryRefs}
+                          onGalleryChange={handleGalleryFileChange} onGalleryRemove={handleGalleryRemove}
+                        />
+                        <div className="flex gap-3 pt-1">
+                          <button onClick={handleSaveAnn} disabled={editSaving || !editForm.title.trim()} className="btn-primary px-5 py-2.5 disabled:opacity-50 text-sm">{editSaving ? 'Speichern...' : 'Speichern'}</button>
+                          <button onClick={closeEditAnn} className="btn-outline px-5 py-2.5 text-sm">Abbrechen</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Shared edit form fields component
+// ─────────────────────────────────────────────────────────────────
+function AnnouncementEditFields({
+  form, onFormChange,
+  imageRef, imagePreview, onImageChange,
+  galleryFiles, galleryPreviews, galleryRemove, galleryRefs,
+  onGalleryChange, onGalleryRemove,
+}: {
+  form: EditForm;
+  onFormChange: (patch: Partial<EditForm>) => void;
+  imageRef: { current: HTMLInputElement | null };
+  imagePreview: string | null;
+  onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  galleryFiles: (File | null)[];
+  galleryPreviews: (string | null)[];
+  galleryRemove: boolean[];
+  galleryRefs: { current: HTMLInputElement | null }[];
+  onGalleryChange: (i: number, file: File | null) => void;
+  onGalleryRemove: (i: number) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Hintergrundfarbe */}
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-2">Hintergrundfarbe</label>
+        <div className="flex items-center gap-3">
+          <input type="color" value={form.background_color} onChange={(e) => onFormChange({ background_color: e.target.value })} className="w-10 h-10 cursor-pointer border-none bg-transparent p-0" />
+          <input type="text" value={form.background_color} onChange={(e) => onFormChange({ background_color: e.target.value })} placeholder="#0e0e0e" className="input-field w-36 text-sm font-mono py-2" />
+        </div>
+      </div>
+
+      {/* Titel + Schriftgröße */}
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">
+          Titel <span className="text-ink-faint normal-case tracking-normal">(Schriftgröße px)</span>
+        </label>
+        <div className="flex gap-2">
+          <input type="text" value={form.title} onChange={(e) => onFormChange({ title: e.target.value })} placeholder="Ankündigung Titel" className="input-field flex-1" />
+          <input type="number" min="16" max="120" value={form.title_size} onChange={(e) => onFormChange({ title_size: e.target.value })} className="input-field w-20 text-center text-sm" title="Schriftgröße Titel (px)" />
+        </div>
+      </div>
+
+      {/* Text + Schriftgröße */}
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">
+          Text <span className="text-ink-faint normal-case tracking-normal">(Schriftgröße px)</span>
+        </label>
+        <div className="flex gap-2 items-start">
+          <textarea rows={3} value={form.text} onChange={(e) => onFormChange({ text: e.target.value })} placeholder="Optionaler Beschreibungstext..." className="input-field flex-1 resize-none" />
+          <input type="number" min="10" max="48" value={form.text_size} onChange={(e) => onFormChange({ text_size: e.target.value })} className="input-field w-20 text-center text-sm" title="Schriftgröße Text (px)" />
+        </div>
+      </div>
+
+      {/* Hauptbild */}
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-2">
+          Hauptbild <span className="text-ink-faint normal-case tracking-normal">(rechts neben Titel/Text)</span>
+        </label>
+        {(imagePreview ?? form.image_url) && (
+          <img src={imagePreview ?? form.image_url!} alt="Vorschau" className="w-full max-h-40 object-cover mb-2" />
+        )}
+        <input ref={imageRef} type="file" accept="image/*" onChange={onImageChange} className="hidden" />
+        <button type="button" onClick={() => imageRef.current?.click()} className="flex items-center gap-2 px-4 py-2 border border-surface-low text-sm text-ink-variant hover:border-ink-outline hover:text-ink transition-colors">
+          <span className="material-symbols-outlined text-[18px]">upload</span>
+          {form.image_url || imagePreview ? 'Bild ersetzen' : 'Bild hochladen'}
+        </button>
+      </div>
+
+      {/* Galeriebilder */}
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">
+          Galeriebilder <span className="text-ink-faint normal-case tracking-normal">(bis zu 5, gleichmäßig unterhalb)</span>
+        </label>
+        <div className="grid grid-cols-5 gap-2 mt-2">
+          {[0, 1, 2, 3, 4].map((i) => {
+            const displayUrl = galleryRemove[i] ? null : (galleryPreviews[i] ?? form.gallery_images?.[i] ?? null);
+            return (
+              <div key={i} className="relative">
+                {displayUrl ? (
+                  <div className="relative">
+                    <img src={displayUrl} alt="" className="w-full h-20 object-cover" />
+                    <button type="button" onClick={() => onGalleryRemove(i)} className="absolute top-1 right-1 w-5 h-5 bg-black/60 text-white flex items-center justify-center hover:bg-red-600 transition-colors">
+                      <span className="material-symbols-outlined text-[12px]">close</span>
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => galleryRefs[i].current?.click()} className="w-full h-20 border border-dashed border-surface-low flex flex-col items-center justify-center gap-1 text-ink-faint hover:border-ink-outline hover:text-ink transition-colors text-xs">
+                    <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
+                    {i + 1}
+                  </button>
+                )}
+                <input ref={galleryRefs[i]} type="file" accept="image/*" className="hidden" onChange={(e) => onGalleryChange(i, e.target.files?.[0] ?? null)} />
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

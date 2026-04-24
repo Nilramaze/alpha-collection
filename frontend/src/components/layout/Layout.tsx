@@ -1,24 +1,49 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
 import { useEffect, useState, useRef } from 'react';
 import clsx from 'clsx';
+import { productApi } from '../../services/api';
+import type { Category } from '../../types';
 
-const navItems = [
-  { path: '/', icon: 'dashboard', label: 'Dashboard' },
-  { path: '/produkte', icon: 'eyeglasses', label: 'Sortiment' },
-  { path: '/bestellungen', icon: 'shopping_cart', label: 'Bestellungen', auth: true },
-  { path: '/profil', icon: 'person', label: 'Mein Profil', auth: true, hideForAdmin: true },
-  { path: '/kontakt', icon: 'group', label: 'Kontakt', auth: true },
-];
+const navLinkCls = ({ isActive }: { isActive: boolean }) => clsx(
+  'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all',
+  isActive
+    ? 'text-brand-200 bg-brand-200/5 border-l-[3px] border-brand-200 -ml-px'
+    : 'text-[#9c9d9d] hover:text-white hover:bg-white/[0.03]'
+);
 
 export default function Layout() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const { cart, fetchCart } = useCartStore();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [sortimentOpen, setSortimentOpen] = useState(false);
+  const sortimentRef = useRef<HTMLDivElement>(null);
+
+  const isSortimentActive = location.pathname.startsWith('/produkte');
+
+  useEffect(() => {
+    productApi.categories().then(({ data }) => setCategories(data.data));
+  }, []);
+
+  useEffect(() => {
+    setSortimentOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortimentRef.current && !sortimentRef.current.contains(e.target as Node)) {
+        setSortimentOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);
@@ -62,28 +87,80 @@ export default function Layout() {
 
         {/* Nav */}
         <nav className="flex-1 mt-6 px-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            if (item.auth && !isAuthenticated) return null;
-            if (item.hideForAdmin && user?.role === 'admin') return null;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                end={item.path === '/'}
-                onClick={() => setMobileOpen(false)}
-                className={({ isActive }) => clsx(
-                  'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all group',
-                  isActive
-                    ? 'text-brand-200 bg-brand-200/5 border-l-[3px] border-brand-200 -ml-px'
-                    : 'text-[#9c9d9d] hover:text-white hover:bg-white/[0.03]'
-                )}
-              >
-                <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
-                {item.label}
-              </NavLink>
-            );
-          })}
+          {/* Dashboard */}
+          <NavLink to="/" end onClick={() => setMobileOpen(false)} className={navLinkCls}>
+            <span className="material-symbols-outlined text-[20px]">dashboard</span>
+            Dashboard
+          </NavLink>
 
+          {/* Sortiment mit Dropdown */}
+          <div className="relative" ref={sortimentRef}>
+            <button
+              onClick={() => setSortimentOpen(!sortimentOpen)}
+              className={clsx(
+                'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all w-full text-left',
+                isSortimentActive
+                  ? 'text-brand-200 bg-brand-200/5 border-l-[3px] border-brand-200 -ml-px'
+                  : 'text-[#9c9d9d] hover:text-white hover:bg-white/[0.03]'
+              )}
+            >
+              <span className="material-symbols-outlined text-[20px]">eyeglasses</span>
+              Sortiment
+              <span
+                className="material-symbols-outlined text-[16px] ml-auto transition-transform duration-200"
+                style={{ transform: sortimentOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              >
+                expand_more
+              </span>
+            </button>
+            {sortimentOpen && (
+              <div className="bg-[#171717] py-1 mx-1 mt-0.5">
+                <button
+                  onClick={() => { navigate('/produkte'); setMobileOpen(false); }}
+                  className="flex items-center gap-2 w-full px-5 py-2 text-xs font-medium text-[#9c9d9d] hover:text-white hover:bg-white/[0.03] transition-all text-left"
+                >
+                  <span className="material-symbols-outlined text-[14px]">grid_view</span>
+                  Alle Kategorien
+                </button>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    onClick={() => { navigate(`/produkte?category=${cat.slug}`); setMobileOpen(false); }}
+                    className="flex items-center gap-2 w-full px-5 py-2 text-xs font-medium text-[#9c9d9d] hover:text-white hover:bg-white/[0.03] transition-all text-left"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">label</span>
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Bestellungen */}
+          {isAuthenticated && (
+            <NavLink to="/bestellungen" onClick={() => setMobileOpen(false)} className={navLinkCls}>
+              <span className="material-symbols-outlined text-[20px]">shopping_cart</span>
+              Bestellungen
+            </NavLink>
+          )}
+
+          {/* Mein Profil (nur für Nicht-Admins) */}
+          {isAuthenticated && user?.role !== 'admin' && (
+            <NavLink to="/profil" onClick={() => setMobileOpen(false)} className={navLinkCls}>
+              <span className="material-symbols-outlined text-[20px]">person</span>
+              Mein Profil
+            </NavLink>
+          )}
+
+          {/* Kontakt */}
+          {isAuthenticated && (
+            <NavLink to="/kontakt" onClick={() => setMobileOpen(false)} className={navLinkCls}>
+              <span className="material-symbols-outlined text-[20px]">group</span>
+              Kontakt
+            </NavLink>
+          )}
+
+          {/* Administration */}
           {user?.role === 'admin' && (
             <>
               <div className="px-4 pt-5 pb-1">
@@ -100,12 +177,7 @@ export default function Layout() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setMobileOpen(false)}
-                  className={({ isActive }) => clsx(
-                    'flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all',
-                    isActive
-                      ? 'text-brand-200 bg-brand-200/5 border-l-[3px] border-brand-200 -ml-px'
-                      : 'text-[#9c9d9d] hover:text-white hover:bg-white/[0.03]'
-                  )}
+                  className={navLinkCls}
                 >
                   <span className="material-symbols-outlined text-[20px]">{item.icon}</span>
                   {item.label}
@@ -115,29 +187,9 @@ export default function Layout() {
           )}
         </nav>
 
-        {/* Bottom */}
-        <div className="p-3 mt-auto">
-          {isAuthenticated ? (
-            <>
-              <NavLink
-                to="/warenkorb"
-                onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-[#0e0e0e] bg-brand-200 hover:bg-brand-300 transition-all mb-2"
-              >
-                <span className="material-symbols-outlined text-[20px]">shopping_bag</span>
-                Warenkorb
-                {(cart?.item_count ?? 0) > 0 && (
-                  <span className="ml-auto text-xs font-black bg-brand-800 text-brand-200 w-5 h-5 flex items-center justify-center">
-                    {cart?.item_count}
-                  </span>
-                )}
-              </NavLink>
-              <button onClick={handleLogout} className="flex items-center gap-3 px-4 py-2.5 text-xs text-[#757777] hover:text-white transition-all w-full">
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-                Abmelden
-              </button>
-            </>
-          ) : (
+        {/* Bottom – Login-Button nur wenn nicht eingeloggt */}
+        {!isAuthenticated && (
+          <div className="p-3 mt-auto">
             <NavLink
               to="/login"
               className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-[#0e0e0e] bg-brand-200 hover:bg-brand-300 transition-all"
@@ -145,8 +197,8 @@ export default function Layout() {
               <span className="material-symbols-outlined text-[20px]">login</span>
               Anmelden
             </NavLink>
-          )}
-        </div>
+          </div>
+        )}
       </aside>
 
       {/* ── Mobile overlay ──────────────────────── */}
@@ -174,8 +226,37 @@ export default function Layout() {
             />
           </div>
 
-          <div className="flex items-center gap-5">
-            <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-[#757777] hidden md:block">Support</span>
+          <div className="flex items-center gap-2">
+            {/* Warenkorb + Abmelden oben rechts */}
+            {isAuthenticated && (
+              <>
+                <NavLink
+                  to="/warenkorb"
+                  title="Warenkorb"
+                  className={({ isActive }) => clsx(
+                    'relative flex items-center justify-center w-9 h-9 transition-colors',
+                    isActive ? 'text-brand-200' : 'text-[#757777] hover:text-white'
+                  )}
+                >
+                  <span className="material-symbols-outlined text-[22px]">shopping_bag</span>
+                  {(cart?.item_count ?? 0) > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-4 h-4 text-[9px] font-black bg-brand-300 text-white flex items-center justify-center">
+                      {cart?.item_count}
+                    </span>
+                  )}
+                </NavLink>
+                <button
+                  onClick={handleLogout}
+                  title="Abmelden"
+                  className="flex items-center justify-center w-9 h-9 text-[#757777] hover:text-white transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[20px]">logout</span>
+                </button>
+                <div className="w-px h-5 bg-[#2a2a2a] mx-1" />
+              </>
+            )}
+
+            {/* Benutzer-Info */}
             {isAuthenticated && (
               <div className="flex items-center gap-3">
                 <div className="text-right hidden sm:block">
@@ -188,6 +269,17 @@ export default function Layout() {
                   <span className="material-symbols-outlined filled text-brand-800 text-sm">person</span>
                 </div>
               </div>
+            )}
+
+            {/* Anmelden-Button wenn nicht eingeloggt */}
+            {!isAuthenticated && (
+              <NavLink
+                to="/login"
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-[#0e0e0e] bg-brand-200 hover:bg-brand-300 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">login</span>
+                Anmelden
+              </NavLink>
             )}
           </div>
         </header>
