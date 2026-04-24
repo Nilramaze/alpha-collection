@@ -8,10 +8,6 @@ http://{$DOMAIN:localhost} {
         reverse_proxy backend:80
     }
 
-    handle /admin* {
-        reverse_proxy backend:80
-    }
-
     handle /sanctum/* {
         reverse_proxy backend:80
     }

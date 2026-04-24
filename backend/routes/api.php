@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\Admin\MessageController as AdminMessageController;
 use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController;
 use App\Http\Controllers\Api\Admin\SkontoGroupController as AdminSkontoGroupController;
 use App\Http\Controllers\Api\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,8 +25,8 @@ use Illuminate\Support\Facades\Route;
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 
-// Announcement banner (public)
-Route::get('/announcement', [AnnouncementController::class, 'show']);
+// Announcements (public – only enabled ones)
+Route::get('/announcements', [AnnouncementController::class, 'index']);
 
 // Products are publicly visible (prices hidden for guests via Resource)
 Route::get('/products', [ProductController::class, 'index']);
@@ -75,7 +76,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/messages/{message}', [AdminMessageController::class, 'update']);
         Route::get('/settings', [AdminSettingsController::class, 'index']);
         Route::put('/settings', [AdminSettingsController::class, 'update']);
-        Route::post('/announcement', [AnnouncementController::class, 'update']);
+        // Announcements admin (reorder must be before {announcement} to avoid wildcard match)
+        Route::get('/announcements', [AdminAnnouncementController::class, 'index']);
+        Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
+        Route::post('/announcements/reorder', [AdminAnnouncementController::class, 'reorder']);
+        Route::post('/announcements/{announcement}', [AdminAnnouncementController::class, 'update']);
+        Route::patch('/announcements/{announcement}', [AdminAnnouncementController::class, 'toggle']);
+        Route::delete('/announcements/{announcement}', [AdminAnnouncementController::class, 'destroy']);
         Route::apiResource('categories', AdminCategoryController::class)->except(['show']);
         Route::apiResource('skonto-groups', AdminSkontoGroupController::class)->except(['show']);
         Route::post('/skonto-groups/{skontoGroup}/tiers', [AdminSkontoGroupController::class, 'storeTier']);

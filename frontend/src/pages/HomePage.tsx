@@ -2,60 +2,75 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { productApi, announcementApi } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
-import type { Product } from '../types';
+import type { Announcement, Product } from '../types';
 import ProductCard from '../components/products/ProductCard';
-
-interface AnnouncementData {
-  enabled: boolean;
-  title: string;
-  text: string;
-  image_url: string | null;
-}
 
 export default function HomePage() {
   const { isAuthenticated } = useAuthStore();
   const [featured, setFeatured] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [announcement, setAnnouncement] = useState<AnnouncementData | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     productApi.featured()
       .then(({ data }) => setFeatured(data.data))
       .finally(() => setLoading(false));
-    announcementApi.get().then(({ data }) => {
-      if (data.data.enabled) setAnnouncement(data.data);
-    });
+    announcementApi.list().then(({ data }) => setAnnouncements(data.data));
   }, []);
 
   return (
     <div className="space-y-16">
-      {/* ── Announcement Banner ───────────────────── */}
-      {announcement && (
-        <section className={`relative overflow-hidden ${announcement.image_url ? 'min-h-[320px] md:min-h-[420px] flex flex-col justify-end' : ''}`}>
-          {/* Background image */}
-          {announcement.image_url && (
-            <div
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${announcement.image_url})` }}
-            />
-          )}
-          {/* Overlay */}
-          <div className={`relative z-10 p-8 md:p-14 ${announcement.image_url ? 'bg-gradient-to-t from-black/80 via-black/50 to-black/20' : 'bg-[#0e0e0e]'}`}>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-2 h-2 bg-brand-300 animate-pulse" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-300">Ankündigung</span>
+      {/* ── Announcement Banners ─────────────────── */}
+      {announcements.map((ann) => (
+        <section
+          key={ann.id}
+          className="overflow-hidden"
+          style={{ backgroundColor: ann.background_color || '#0e0e0e' }}
+        >
+          {/* Titel + Text links, Bild rechts */}
+          <div className="p-8 md:p-14 flex flex-col md:flex-row gap-8 items-start">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-2 h-2 bg-brand-300 animate-pulse" />
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-300">Ankündigung</span>
+              </div>
+              <h2
+                className="font-extrabold tracking-tighter leading-[0.95] text-white"
+                style={{ fontSize: ann.title_size ? `${ann.title_size}px` : '3rem' }}
+              >
+                {ann.title}
+              </h2>
+              {ann.text && (
+                <p
+                  className="mt-4 max-w-2xl leading-relaxed text-white/70"
+                  style={{ fontSize: ann.text_size ? `${ann.text_size}px` : '1.125rem' }}
+                >
+                  {ann.text}
+                </p>
+              )}
             </div>
-            <h2 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-[0.95] text-white max-w-3xl">
-              {announcement.title}
-            </h2>
-            {announcement.text && (
-              <p className="text-base md:text-lg mt-4 max-w-2xl leading-relaxed text-white/70">
-                {announcement.text}
-              </p>
+
+            {ann.image_url && (
+              <div className="w-full md:w-80 lg:w-96 shrink-0">
+                <img src={ann.image_url} alt="" className="w-full h-64 md:h-72 object-cover" />
+              </div>
             )}
           </div>
+
+          {/* Galeriebilder */}
+          {ann.gallery_images?.some(url => url) && (
+            <div className="px-8 md:px-14 pb-8 md:pb-14 flex gap-4">
+              {ann.gallery_images
+                .filter((url): url is string => Boolean(url))
+                .map((url, i) => (
+                  <div key={i} className="flex-1">
+                    <img src={url} alt="" className="w-full h-40 object-cover" />
+                  </div>
+                ))}
+            </div>
+          )}
         </section>
-      )}
+      ))}
 
       {/* ── Hero Section ──────────────────────────── */}
       <section>
