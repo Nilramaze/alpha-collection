@@ -130,6 +130,15 @@ export default function OrderDetailPage() {
                   <span>Skonto-Rabatt</span><span className="font-semibold">-{fmt(order.skonto_discount)}</span>
                 </div>
               )}
+              {order.shipping_price > 0 && (
+                <div className="flex justify-between text-ink-variant">
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-sm">local_shipping</span>
+                    {order.shipping_name ?? 'Versand'}
+                  </span>
+                  <span className="font-semibold text-ink">{fmt(order.shipping_price)}</span>
+                </div>
+              )}
               <div className="h-px bg-surface-low" />
               <div className="flex justify-between">
                 <span className="font-bold text-ink text-base">Endpreis</span>

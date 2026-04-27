@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\Admin\CategoryController as AdminCategoryController
 use App\Http\Controllers\Api\Admin\SkontoGroupController as AdminSkontoGroupController;
 use App\Http\Controllers\Api\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
+use App\Http\Controllers\Api\Admin\ShippingOptionController as AdminShippingOptionController;
+use App\Http\Controllers\Api\ShippingOptionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -27,6 +29,9 @@ Route::post('/register', [AuthController::class, 'register']);
 
 // Announcements (public – only enabled ones)
 Route::get('/announcements', [AnnouncementController::class, 'index']);
+
+// Shipping options (public)
+Route::get('/shipping-options', [ShippingOptionController::class, 'index']);
 
 // Products are publicly visible (prices hidden for guests via Resource)
 Route::get('/products', [ProductController::class, 'index']);
@@ -78,6 +83,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/settings', [AdminSettingsController::class, 'update']);
         // Announcements admin (reorder must be before {announcement} to avoid wildcard match)
         Route::get('/announcements', [AdminAnnouncementController::class, 'index']);
+        // Shipping options admin
+        Route::get('/shipping-options', [AdminShippingOptionController::class, 'index']);
+        Route::post('/shipping-options', [AdminShippingOptionController::class, 'store']);
+        Route::post('/shipping-options/{shippingOption}', [AdminShippingOptionController::class, 'update']);
+        Route::patch('/shipping-options/{shippingOption}', [AdminShippingOptionController::class, 'toggle']);
+        Route::delete('/shipping-options/{shippingOption}', [AdminShippingOptionController::class, 'destroy']);
         Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
         Route::post('/announcements/reorder', [AdminAnnouncementController::class, 'reorder']);
         Route::post('/announcements/{announcement}', [AdminAnnouncementController::class, 'update']);

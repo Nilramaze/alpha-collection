@@ -66,14 +66,32 @@ export const cartApi = {
     api.post('/cart/remove', { product_id, product_color_id }),
 };
 
+// ── Shipping Options ─────────────────────────────────
+export const shippingApi = {
+  list: (cartTotal: number) =>
+    api.get('/shipping-options', { params: { cart_total: cartTotal } }),
+};
+
+export const adminShippingApi = {
+  list: () => api.get('/admin/shipping-options'),
+  create: (data: FormData) =>
+    api.post('/admin/shipping-options', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id: number, data: FormData) =>
+    api.post(`/admin/shipping-options/${id}`, data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  toggle: (id: number, active: boolean) =>
+    api.patch(`/admin/shipping-options/${id}`, { active }),
+  destroy: (id: number) =>
+    api.delete(`/admin/shipping-options/${id}`),
+};
+
 // ── Orders ──────────────────────────────────────
 export const orderApi = {
   list: (params?: Record<string, any>) =>
     api.get('/orders', { params }),
   get: (id: number) =>
     api.get(`/orders/${id}`),
-  create: (notes?: string) =>
-    api.post('/orders', { notes }),
+  create: (notes?: string, shippingOptionId?: number | null) =>
+    api.post('/orders', { notes, shipping_option_id: shippingOptionId ?? null }),
 };
 
 // ── Address ──────────────────────────────────────

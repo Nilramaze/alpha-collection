@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\Setting;
+use App\Models\ShippingOption;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,7 @@ class OrderService
         private CartService $cartService,
     ) {}
 
-    public function createOrder(User $user, ?string $notes = null): Order
+    public function createOrder(User $user, ?string $notes = null, ?int $shippingOptionId = null): Order
     {
         $cart = $this->cartService->getCart($user);
 
@@ -35,17 +36,29 @@ class OrderService
             }
         }
 
-        return DB::transaction(function () use ($user, $cart, $notes) {
+        return DB::transaction(function () use ($user, $cart, $notes, $shippingOptionId) {
             $totalPrice  = $cart->total;
             $skontoData  = $this->cartService->calculateSkontoDiscount($user, $totalPrice);
+
+            $shippingPrice = 0.0;
+            $shippingName  = null;
+            if ($shippingOptionId) {
+                $shippingOption = ShippingOption::find($shippingOptionId);
+                if ($shippingOption && $shippingOption->active) {
+                    $shippingPrice = (float) $shippingOption->price;
+                    $shippingName  = $shippingOption->name;
+                }
+            }
 
             $order = Order::create([
                 'user_id'         => $user->id,
                 'status'          => OrderStatus::EINGEGANGEN,
                 'total_price'     => $skontoData['total_price'],
                 'skonto_discount' => $skontoData['skonto_discount'],
-                'final_price'     => $skontoData['final_price'],
+                'final_price'     => $skontoData['final_price'] + $shippingPrice,
                 'notes'           => $notes,
+                'shipping_name'   => $shippingName,
+                'shipping_price'  => $shippingPrice,
             ]);
 
             foreach ($cart->items as $item) {
