@@ -15,8 +15,10 @@ class OrderResource extends JsonResource
             'status_label' => $this->status->label(),
             'total_price' => (float) $this->total_price,
             'skonto_discount' => (float) $this->skonto_discount,
-            'final_price' => (float) $this->final_price,
-            'notes' => $this->notes,
+            'final_price'    => (float) $this->final_price,
+            'notes'          => $this->notes,
+            'shipping_name'  => $this->shipping_name,
+            'shipping_price' => (float) ($this->shipping_price ?? 0),
             'user' => $this->whenLoaded('user', fn() => [
                 'id'                       => $this->user->id,
                 'name'                     => $this->user->name,

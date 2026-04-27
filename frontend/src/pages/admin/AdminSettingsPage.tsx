@@ -16,8 +16,8 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { adminSettingsApi, adminCategoryApi, adminSkontoApi, adminAnnouncementApi } from '../../services/api';
-import type { Announcement } from '../../types';
+import { adminSettingsApi, adminCategoryApi, adminSkontoApi, adminAnnouncementApi, adminShippingApi } from '../../services/api';
+import type { Announcement, ShippingOption } from '../../types';
 import toast from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────
@@ -166,6 +166,16 @@ export default function AdminSettingsPage() {
   const editGalleryRef5 = useRef<HTMLInputElement>(null);
   const editGalleryRefs = [editGalleryRef1, editGalleryRef2, editGalleryRef3, editGalleryRef4, editGalleryRef5];
 
+  // ── Shipping Options ──────────────────────────────────────────
+  const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
+  const [shippingLoading, setShippingLoading] = useState(true);
+  const [editingShipId, setEditingShipId] = useState<number | 'new' | null>(null);
+  const [shipForm, setShipForm] = useState({ name: '', price: '0', min_order_value: '0', max_order_value: '' });
+  const [shipImageFile, setShipImageFile] = useState<File | null>(null);
+  const [shipImagePreview, setShipImagePreview] = useState<string | null>(null);
+  const [shipSaving, setShipSaving] = useState(false);
+  const shipImageRef = useRef<HTMLInputElement>(null);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -200,6 +210,12 @@ export default function AdminSettingsPage() {
     adminAnnouncementApi.list().then(({ data }) => setAnnouncements(data.data)).finally(() => setAnnLoading(false));
   };
   useEffect(() => { loadAnnouncements(); }, []);
+
+  const loadShippingOptions = () => {
+    setShippingLoading(true);
+    adminShippingApi.list().then(({ data }) => setShippingOptions(data.data)).finally(() => setShippingLoading(false));
+  };
+  useEffect(() => { loadShippingOptions(); }, []);
 
   // ── Settings handlers ──────────────────────────────────────────
   const handleSave = async () => {
@@ -331,6 +347,53 @@ export default function AdminSettingsPage() {
     setAnnouncements(reordered);
     try { await adminAnnouncementApi.reorder(reordered.map(a => a.id)); }
     catch { loadAnnouncements(); }
+  };
+
+  // ── Shipping handlers ──────────────────────────────────────────
+  const EMPTY_SHIP = { name: '', price: '0', min_order_value: '0', max_order_value: '' };
+
+  const openEditShip = (opt: ShippingOption | null) => {
+    setShipImageFile(null); setShipImagePreview(null);
+    if (opt) {
+      setEditingShipId(opt.id);
+      setShipForm({ name: opt.name, price: String(opt.price), min_order_value: String(opt.min_order_value), max_order_value: opt.max_order_value != null ? String(opt.max_order_value) : '' });
+    } else {
+      setEditingShipId('new');
+      setShipForm(EMPTY_SHIP);
+    }
+  };
+
+  const closeEditShip = () => setEditingShipId(null);
+
+  const handleToggleShip = async (opt: ShippingOption, active: boolean) => {
+    setShippingOptions(prev => prev.map(s => s.id === opt.id ? { ...s, active } : s));
+    try { await adminShippingApi.toggle(opt.id, active); }
+    catch { loadShippingOptions(); }
+  };
+
+  const handleDeleteShip = async (opt: ShippingOption) => {
+    if (!confirm(`Versandoption "${opt.name}" wirklich löschen?`)) return;
+    try { await adminShippingApi.destroy(opt.id); setShippingOptions(prev => prev.filter(s => s.id !== opt.id)); if (editingShipId === opt.id) setEditingShipId(null); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.'); }
+  };
+
+  const handleSaveShip = async () => {
+    if (!shipForm.name.trim()) return;
+    setShipSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('name', shipForm.name);
+      fd.append('price', shipForm.price);
+      fd.append('min_order_value', shipForm.min_order_value || '0');
+      if (shipForm.max_order_value) fd.append('max_order_value', shipForm.max_order_value);
+      if (shipImageFile) fd.append('image', shipImageFile);
+      if (editingShipId === 'new') { await adminShippingApi.create(fd); }
+      else { await adminShippingApi.update(editingShipId as number, fd); }
+      await loadShippingOptions();
+      setEditingShipId(null);
+      toast.success('Versandoption gespeichert.');
+    } catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.'); }
+    finally { setShipSaving(false); }
   };
 
   // ── Announcement edit form helpers ─────────────────────────────
@@ -497,6 +560,84 @@ export default function AdminSettingsPage() {
                   <button onClick={() => startEdit(cat)} className="p-1.5 text-ink-faint hover:text-ink transition-colors"><span className="material-symbols-outlined text-[18px]">edit</span></button>
                 )}
                 <button onClick={() => handleDeleteCategory(cat)} className="p-1.5 text-ink-faint hover:text-red-500 transition-colors"><span className="material-symbols-outlined text-[18px]">delete</span></button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Versandoptionen ────────────────────────── */}
+      <div className="bg-white p-8">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-lg font-bold text-ink font-headline">Versandoptionen</h2>
+          <button
+            onClick={() => editingShipId === 'new' ? closeEditShip() : openEditShip(null)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-brand-500 hover:text-brand-700 transition-colors border border-brand-200 hover:border-brand-300"
+          >
+            <span className="material-symbols-outlined text-[16px]">{editingShipId === 'new' ? 'close' : 'add'}</span>
+            {editingShipId === 'new' ? 'Abbrechen' : 'Neue Versandoption'}
+          </button>
+        </div>
+        <p className="text-sm text-ink-variant mb-6">
+          Versandoptionen werden dem Kunden im Warenkorb angezeigt. Verfügbarkeit basiert auf dem Bestellwert.
+        </p>
+
+        {/* New form */}
+        {editingShipId === 'new' && (
+          <div className="mb-4 border border-brand-300/40 bg-surface p-5">
+            <ShippingEditFields form={shipForm} onChange={(p) => setShipForm(f => ({ ...f, ...p }))} imageRef={shipImageRef} imagePreview={shipImagePreview} onImageChange={(e) => { const f = e.target.files?.[0] ?? null; setShipImageFile(f); setShipImagePreview(f ? URL.createObjectURL(f) : null); }} />
+            <div className="flex gap-3 mt-4">
+              <button onClick={handleSaveShip} disabled={shipSaving || !shipForm.name.trim()} className="btn-primary px-5 py-2.5 disabled:opacity-50 text-sm">{shipSaving ? 'Speichern...' : 'Erstellen'}</button>
+              <button onClick={closeEditShip} className="btn-outline px-5 py-2.5 text-sm">Abbrechen</button>
+            </div>
+          </div>
+        )}
+
+        {shippingLoading ? (
+          <div className="space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-12 bg-surface-low animate-pulse" />)}</div>
+        ) : shippingOptions.length === 0 ? (
+          <p className="text-sm text-ink-faint py-4 text-center">Noch keine Versandoptionen angelegt.</p>
+        ) : (
+          <div className="space-y-2">
+            {shippingOptions.map((opt) => (
+              <div key={opt.id}>
+                <div className={`flex items-center gap-3 px-4 py-3 bg-white border transition-colors ${editingShipId === opt.id ? 'border-brand-300' : 'border-surface-low'}`}>
+                  {/* Image/Icon */}
+                  <div className="w-8 h-8 shrink-0 flex items-center justify-center">
+                    {opt.image_url
+                      ? <img src={opt.image_url} alt={opt.name} className="w-8 h-8 object-contain" />
+                      : <span className="material-symbols-outlined text-[20px] text-ink-faint">local_shipping</span>
+                    }
+                  </div>
+                  {/* Name + price */}
+                  <span className="flex-1 text-sm font-semibold text-ink">{opt.name}</span>
+                  <span className="text-sm text-ink-variant shrink-0">
+                    {opt.price === 0 ? 'Kostenlos' : `${Number(opt.price).toFixed(2).replace('.', ',')} €`}
+                  </span>
+                  {/* Availability hint */}
+                  <span className="text-[10px] text-ink-faint shrink-0 hidden sm:block">
+                    ab {Number(opt.min_order_value).toFixed(0)} €{opt.max_order_value != null ? ` bis ${Number(opt.max_order_value).toFixed(0)} €` : ''}
+                  </span>
+                  {/* Toggle */}
+                  <div onClick={() => handleToggleShip(opt, !opt.active)} className={`w-9 h-5 flex items-center rounded-none transition-colors cursor-pointer shrink-0 ${opt.active ? 'bg-brand-300' : 'bg-surface-low'}`}>
+                    <span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${opt.active ? 'translate-x-[14px]' : 'translate-x-0'}`} />
+                  </div>
+                  <button onClick={() => editingShipId === opt.id ? closeEditShip() : openEditShip(opt)} className="p-1.5 text-ink-faint hover:text-ink transition-colors shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">{editingShipId === opt.id ? 'expand_less' : 'edit'}</span>
+                  </button>
+                  <button onClick={() => handleDeleteShip(opt)} className="p-1.5 text-ink-faint hover:text-red-500 transition-colors shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
+                {editingShipId === opt.id && (
+                  <div className="border border-brand-300/40 border-t-0 bg-surface p-5">
+                    <ShippingEditFields form={shipForm} onChange={(p) => setShipForm(f => ({ ...f, ...p }))} imageRef={shipImageRef} imagePreview={shipImagePreview} onImageChange={(e) => { const f = e.target.files?.[0] ?? null; setShipImageFile(f); setShipImagePreview(f ? URL.createObjectURL(f) : null); }} />
+                    <div className="flex gap-3 mt-4">
+                      <button onClick={handleSaveShip} disabled={shipSaving || !shipForm.name.trim()} className="btn-primary px-5 py-2.5 disabled:opacity-50 text-sm">{shipSaving ? 'Speichern...' : 'Speichern'}</button>
+                      <button onClick={closeEditShip} className="btn-outline px-5 py-2.5 text-sm">Abbrechen</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -681,6 +822,51 @@ function AnnouncementEditFields({
             );
           })}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// Shipping option edit fields component
+// ─────────────────────────────────────────────────────────────────
+function ShippingEditFields({
+  form, onChange, imageRef, imagePreview, onImageChange,
+}: {
+  form: { name: string; price: string; min_order_value: string; max_order_value: string };
+  onChange: (patch: Partial<typeof form>) => void;
+  imageRef: { current: HTMLInputElement | null };
+  imagePreview: string | null;
+  onImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Name</label>
+        <input type="text" value={form.name} onChange={(e) => onChange({ name: e.target.value })} placeholder="z. B. DHL Standard" className="input-field w-full" />
+      </div>
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Preis (€)</label>
+        <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => onChange({ price: e.target.value })} className="input-field w-40" />
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Mindestbestellwert (€)</label>
+          <input type="number" min="0" step="0.01" value={form.min_order_value} onChange={(e) => onChange({ min_order_value: e.target.value })} placeholder="0" className="input-field w-full" />
+        </div>
+        <div>
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Maximalbestellwert (€, leer = kein Max)</label>
+          <input type="number" min="0" step="0.01" value={form.max_order_value} onChange={(e) => onChange({ max_order_value: e.target.value })} placeholder="kein Maximum" className="input-field w-full" />
+        </div>
+      </div>
+      <div>
+        <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-2">Icon / Bild (optional)</label>
+        {imagePreview && <img src={imagePreview} alt="Vorschau" className="w-16 h-16 object-contain mb-2 border border-surface-low p-1" />}
+        <input ref={imageRef} type="file" accept="image/*" className="hidden" onChange={onImageChange} />
+        <button type="button" onClick={() => imageRef.current?.click()} className="flex items-center gap-2 px-4 py-2 border border-surface-low text-sm text-ink-variant hover:border-ink-outline hover:text-ink transition-colors">
+          <span className="material-symbols-outlined text-[18px]">upload</span>
+          {imagePreview ? 'Bild ersetzen' : 'Bild hochladen'}
+        </button>
       </div>
     </div>
   );

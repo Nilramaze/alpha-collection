@@ -37,13 +37,15 @@ class OrderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'notes' => 'nullable|string|max:1000',
+            'notes'              => 'nullable|string|max:1000',
+            'shipping_option_id' => 'nullable|integer|exists:shipping_options,id',
         ]);
 
         try {
             $order = $this->orderService->createOrder(
                 $request->user(),
-                $request->notes
+                $request->notes,
+                $request->integer('shipping_option_id') ?: null
             );
 
             return response()->json([

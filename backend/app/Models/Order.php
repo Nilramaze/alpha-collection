@@ -19,15 +19,18 @@ class Order extends Model
         'skonto_discount',
         'final_price',
         'notes',
+        'shipping_name',
+        'shipping_price',
     ];
 
     protected function casts(): array
     {
         return [
-            'status' => OrderStatus::class,
-            'total_price' => 'decimal:2',
+            'status'          => OrderStatus::class,
+            'total_price'     => 'decimal:2',
             'skonto_discount' => 'decimal:2',
-            'final_price' => 'decimal:2',
+            'final_price'     => 'decimal:2',
+            'shipping_price'  => 'decimal:2',
         ];
     }
 

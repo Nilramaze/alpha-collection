@@ -49,6 +49,17 @@ export interface Category {
   slug: string;
 }
 
+export interface ShippingOption {
+  id: number;
+  name: string;
+  price: number;
+  image_url: string | null;
+  min_order_value: number;
+  max_order_value: number | null;
+  active?: boolean;
+  sort_order?: number;
+}
+
 export interface Announcement {
   id: number;
   title: string;
@@ -149,6 +160,8 @@ export interface Order {
   skonto_discount: number;
   final_price: number;
   notes: string | null;
+  shipping_name: string | null;
+  shipping_price: number;
   user?: OrderUser;
   items: OrderItem[];
   created_at: string;
