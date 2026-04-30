@@ -16,7 +16,9 @@ use App\Http\Controllers\Api\Admin\SkontoGroupController as AdminSkontoGroupCont
 use App\Http\Controllers\Api\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Api\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Api\Admin\ShippingOptionController as AdminShippingOptionController;
+use App\Http\Controllers\Api\Admin\CertificateController as AdminCertificateController;
 use App\Http\Controllers\Api\ShippingOptionController;
+use App\Http\Controllers\Api\CertificateController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -32,6 +34,9 @@ Route::get('/announcements', [AnnouncementController::class, 'index']);
 
 // Shipping options (public)
 Route::get('/shipping-options', [ShippingOptionController::class, 'index']);
+
+// Certificates (public)
+Route::get('/certificates', [CertificateController::class, 'index']);
 
 // Products are publicly visible (prices hidden for guests via Resource)
 Route::get('/products', [ProductController::class, 'index']);
@@ -94,6 +99,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/announcements/{announcement}', [AdminAnnouncementController::class, 'update']);
         Route::patch('/announcements/{announcement}', [AdminAnnouncementController::class, 'toggle']);
         Route::delete('/announcements/{announcement}', [AdminAnnouncementController::class, 'destroy']);
+        // Certificates admin
+        Route::get('/certificates', [AdminCertificateController::class, 'index']);
+        Route::post('/certificates', [AdminCertificateController::class, 'store']);
+        Route::patch('/certificates/{certificate}', [AdminCertificateController::class, 'update']);
+        Route::delete('/certificates/{certificate}', [AdminCertificateController::class, 'destroy']);
         Route::apiResource('categories', AdminCategoryController::class)->except(['show']);
         Route::apiResource('skonto-groups', AdminSkontoGroupController::class)->except(['show']);
         Route::post('/skonto-groups/{skontoGroup}/tiers', [AdminSkontoGroupController::class, 'storeTier']);

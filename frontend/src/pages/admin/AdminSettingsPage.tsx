@@ -16,8 +16,8 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { adminSettingsApi, adminCategoryApi, adminSkontoApi, adminAnnouncementApi, adminShippingApi } from '../../services/api';
-import type { Announcement, ShippingOption } from '../../types';
+import { adminSettingsApi, adminCategoryApi, adminSkontoApi, adminAnnouncementApi, adminShippingApi, adminCertificateApi } from '../../services/api';
+import type { Announcement, Certificate, ShippingOption } from '../../types';
 import toast from 'react-hot-toast';
 
 // ─────────────────────────────────────────────────────────────────
@@ -176,6 +176,16 @@ export default function AdminSettingsPage() {
   const [shipSaving, setShipSaving] = useState(false);
   const shipImageRef = useRef<HTMLInputElement>(null);
 
+  // ── Certificates ──────────────────────────────────────────────
+  const [certificates, setCertificates] = useState<Certificate[]>([]);
+  const [certLoading, setCertLoading] = useState(true);
+  const [certUploading, setCertUploading] = useState(false);
+  const [certName, setCertName] = useState('');
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const certFileRef = useRef<HTMLInputElement>(null);
+  const [editingCertId, setEditingCertId] = useState<number | null>(null);
+  const [editingCertName, setEditingCertName] = useState('');
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -216,6 +226,12 @@ export default function AdminSettingsPage() {
     adminShippingApi.list().then(({ data }) => setShippingOptions(data.data)).finally(() => setShippingLoading(false));
   };
   useEffect(() => { loadShippingOptions(); }, []);
+
+  const loadCertificates = () => {
+    setCertLoading(true);
+    adminCertificateApi.list().then(({ data }) => setCertificates(data.data)).finally(() => setCertLoading(false));
+  };
+  useEffect(() => { loadCertificates(); }, []);
 
   // ── Settings handlers ──────────────────────────────────────────
   const handleSave = async () => {
@@ -394,6 +410,35 @@ export default function AdminSettingsPage() {
       toast.success('Versandoption gespeichert.');
     } catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Speichern.'); }
     finally { setShipSaving(false); }
+  };
+
+  // ── Certificate handlers ────────────────────────────────────────
+  const handleUploadCert = async () => {
+    if (!certName.trim() || !certFile) return;
+    setCertUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('name', certName.trim());
+      fd.append('file', certFile);
+      await adminCertificateApi.create(fd);
+      setCertName(''); setCertFile(null);
+      if (certFileRef.current) certFileRef.current.value = '';
+      await loadCertificates();
+      toast.success('Zertifikat hochgeladen.');
+    } catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Hochladen.'); }
+    finally { setCertUploading(false); }
+  };
+
+  const handleUpdateCertName = async (id: number) => {
+    const name = editingCertName.trim(); if (!name) return;
+    try { await adminCertificateApi.update(id, name); setEditingCertId(null); await loadCertificates(); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler.'); }
+  };
+
+  const handleDeleteCert = async (cert: Certificate) => {
+    if (!confirm(`"${cert.name}" wirklich löschen?`)) return;
+    try { await adminCertificateApi.destroy(cert.id); setCertificates(prev => prev.filter(c => c.id !== cert.id)); }
+    catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler beim Löschen.'); }
   };
 
   // ── Announcement edit form helpers ─────────────────────────────
@@ -638,6 +683,85 @@ export default function AdminSettingsPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Zertifikate ────────────────────────────── */}
+      <div className="bg-white p-8">
+        <h2 className="text-lg font-bold text-ink font-headline mb-1">Zertifikate</h2>
+        <p className="text-sm text-ink-variant mb-6">PDFs werden auf der öffentlichen Zertifikate-Seite zum Download angeboten.</p>
+
+        {/* Upload form */}
+        <div className="border border-surface-low p-4 mb-6 space-y-3">
+          <p className="text-xs font-bold text-ink uppercase tracking-widest">Neues Zertifikat hochladen</p>
+          <div className="flex gap-3 items-start flex-wrap">
+            <input
+              type="text"
+              value={certName}
+              onChange={(e) => setCertName(e.target.value)}
+              placeholder="Bezeichnung, z. B. ISO 9001:2015"
+              className="input-field flex-1 min-w-48 py-2.5 text-sm"
+            />
+            <div className="flex items-center gap-2">
+              <input ref={certFileRef} type="file" accept=".pdf" className="hidden"
+                onChange={(e) => setCertFile(e.target.files?.[0] ?? null)} />
+              <button type="button" onClick={() => certFileRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2.5 border border-surface-low text-sm text-ink-variant hover:border-ink-outline hover:text-ink transition-colors">
+                <span className="material-symbols-outlined text-[18px]">upload_file</span>
+                {certFile ? certFile.name : 'PDF auswählen'}
+              </button>
+              <button
+                onClick={handleUploadCert}
+                disabled={certUploading || !certName.trim() || !certFile}
+                className="btn-primary px-5 py-2.5 text-sm disabled:opacity-50"
+              >
+                {certUploading ? 'Hochladen...' : 'Hochladen'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* List */}
+        {certLoading ? (
+          <div className="space-y-2">{[...Array(2)].map((_, i) => <div key={i} className="h-12 bg-surface-low animate-pulse" />)}</div>
+        ) : certificates.length === 0 ? (
+          <p className="text-sm text-ink-faint py-4 text-center">Noch keine Zertifikate hochgeladen.</p>
+        ) : (
+          <div className="divide-y divide-surface-low">
+            {certificates.map((cert) => (
+              <div key={cert.id} className="flex items-center gap-3 py-3">
+                <span className="material-symbols-outlined text-[20px] text-brand-300 shrink-0">picture_as_pdf</span>
+                {editingCertId === cert.id ? (
+                  <input
+                    autoFocus
+                    className="input-field flex-1 text-sm py-1.5"
+                    value={editingCertName}
+                    onChange={(e) => setEditingCertName(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateCertName(cert.id); if (e.key === 'Escape') setEditingCertId(null); }}
+                    onBlur={() => handleUpdateCertName(cert.id)}
+                  />
+                ) : (
+                  <span className="flex-1 text-sm font-medium text-ink truncate">{cert.name}</span>
+                )}
+                <a href={cert.file_url} target="_blank" rel="noopener noreferrer"
+                  className="p-1.5 text-ink-faint hover:text-brand-500 transition-colors shrink-0" title="Vorschau">
+                  <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                </a>
+                {editingCertId === cert.id ? (
+                  <button onClick={() => setEditingCertId(null)} className="p-1.5 text-ink-faint hover:text-ink transition-colors shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">close</span>
+                  </button>
+                ) : (
+                  <button onClick={() => { setEditingCertId(cert.id); setEditingCertName(cert.name); }} className="p-1.5 text-ink-faint hover:text-ink transition-colors shrink-0">
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                )}
+                <button onClick={() => handleDeleteCert(cert)} className="p-1.5 text-ink-faint hover:text-red-500 transition-colors shrink-0">
+                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                </button>
               </div>
             ))}
           </div>

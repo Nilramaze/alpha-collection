@@ -179,3 +179,17 @@ export const adminCategoryApi = {
   update: (id: number, name: string) => api.put(`/admin/categories/${id}`, { name }),
   destroy: (id: number) => api.delete(`/admin/categories/${id}`),
 };
+
+export const certificateApi = {
+  list: () => api.get('/certificates'),
+};
+
+export const adminCertificateApi = {
+  list: () => api.get('/admin/certificates'),
+  create: (data: FormData) =>
+    api.post('/admin/certificates', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  update: (id: number, name: string) =>
+    api.patch(`/admin/certificates/${id}`, { name }),
+  destroy: (id: number) =>
+    api.delete(`/admin/certificates/${id}`),
+};
