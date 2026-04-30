@@ -49,6 +49,14 @@ export interface Category {
   slug: string;
 }
 
+export interface Certificate {
+  id: number;
+  name: string;
+  file_url: string;
+  sort_order: number;
+  created_at: string;
+}
+
 export interface ShippingOption {
   id: number;
   name: string;

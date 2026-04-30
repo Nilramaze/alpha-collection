@@ -187,9 +187,9 @@ export default function Layout() {
           )}
         </nav>
 
-        {/* Bottom – Login-Button nur wenn nicht eingeloggt */}
-        {!isAuthenticated && (
-          <div className="p-3 mt-auto">
+        {/* Bottom – Login-Button + Impressum/Zertifikate */}
+        <div className="p-3 mt-auto space-y-2">
+          {!isAuthenticated && (
             <NavLink
               to="/login"
               className="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-[#0e0e0e] bg-brand-200 hover:bg-brand-300 transition-all"
@@ -197,8 +197,19 @@ export default function Layout() {
               <span className="material-symbols-outlined text-[20px]">login</span>
               Anmelden
             </NavLink>
+          )}
+          <div className="flex items-center gap-1 px-2 py-1">
+            <NavLink to="/impressum" onClick={() => setMobileOpen(false)}
+              className={({ isActive }) => `text-[10px] font-medium transition-colors ${isActive ? 'text-brand-200' : 'text-[#555] hover:text-[#9c9d9d]'}`}>
+              Impressum
+            </NavLink>
+            <span className="text-[#333] text-[10px]">·</span>
+            <NavLink to="/zertifikate" onClick={() => setMobileOpen(false)}
+              className={({ isActive }) => `text-[10px] font-medium transition-colors ${isActive ? 'text-brand-200' : 'text-[#555] hover:text-[#9c9d9d]'}`}>
+              Zertifikate
+            </NavLink>
           </div>
-        )}
+        </div>
       </aside>
 
       {/* ── Mobile overlay ──────────────────────── */}

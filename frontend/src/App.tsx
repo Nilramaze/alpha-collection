@@ -15,6 +15,8 @@ import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminMessagesPage from './pages/admin/AdminMessagesPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import ProfilePage from './pages/ProfilePage';
+import ImpressumPage from './pages/ImpressumPage';
+import ZertifikatePage from './pages/ZertifikatePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -63,6 +65,8 @@ export default function App() {
         <Route path="bestellungen/:id" element={<ProtectedRoute><OrderDetailPage /></ProtectedRoute>} />
         <Route path="kontakt" element={<ProtectedRoute><ContactPage /></ProtectedRoute>} />
         <Route path="profil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="impressum" element={<ImpressumPage />} />
+        <Route path="zertifikate" element={<ZertifikatePage />} />
         <Route path="admin/benutzer" element={<AdminRoute><AdminUsersPage /></AdminRoute>} />
         <Route path="admin/produkte" element={<AdminRoute><AdminProductsPage /></AdminRoute>} />
         <Route path="admin/bestellungen" element={<AdminRoute><AdminOrdersPage /></AdminRoute>} />
