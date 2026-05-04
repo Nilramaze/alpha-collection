@@ -19,8 +19,10 @@ import ImpressumPage from './pages/ImpressumPage';
 import ZertifikatePage from './pages/ZertifikatePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, user } = useAuthStore();
   if (isLoading) return <LoadingScreen />;
+  // Eingeloggt aber noch nicht freigeschaltet → zur Startseite mit Banner
+  if (user && !isAuthenticated) return <Navigate to="/" replace />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
@@ -28,6 +30,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuthStore();
   if (isLoading) return <LoadingScreen />;
+  if (user && !isAuthenticated) return <Navigate to="/" replace />;
   if (!isAuthenticated || user?.role !== 'admin') return <Navigate to="/" replace />;
   return <>{children}</>;
 }

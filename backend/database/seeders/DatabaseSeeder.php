@@ -41,6 +41,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@alpha-collection.de',
             'password' => Hash::make('password'),
             'role' => 'admin',
+            'is_active' => true,
         ]);
 
         $user1 = User::create([
@@ -48,6 +49,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'einkauf@luxe-retail.de',
             'password' => Hash::make('password'),
             'role' => 'user',
+            'is_active' => true,
             'skonto_group_id' => $gold->id,
         ]);
 
@@ -56,6 +58,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'bestellung@vista-optik.de',
             'password' => Hash::make('password'),
             'role' => 'user',
+            'is_active' => true,
             'skonto_group_id' => $silver->id,
         ]);
 
@@ -64,6 +67,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'order@optic-elite.fr',
             'password' => Hash::make('password'),
             'role' => 'user',
+            'is_active' => true,
             'skonto_group_id' => $bronze->id,
         ]);
 
@@ -72,6 +76,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'procurement@globalclear.jp',
             'password' => Hash::make('password'),
             'role' => 'user',
+            'is_active' => true,
         ]);
 
         // ── Categories ─────────────────────────────────────

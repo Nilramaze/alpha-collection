@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 interface SkontoGroup { id: number; name: string; }
 interface User {
   id: number; name: string; email: string; role: string;
+  is_active: boolean;
   skonto_group: { id: number; name: string } | null;
   delivery_company: string | null;
   delivery_street: string | null;
@@ -100,6 +101,16 @@ export default function AdminUsersPage() {
     } finally { setSaving(false); }
   };
 
+  const handleToggleActive = async (u: User) => {
+    try {
+      await adminUserApi.update(u.id, { is_active: !u.is_active });
+      setUsers(prev => prev.map(x => x.id === u.id ? { ...x, is_active: !u.is_active } : x));
+      toast.success(u.is_active ? 'Benutzer deaktiviert.' : 'Benutzer aktiviert.');
+    } catch (e: any) {
+      toast.error(e.response?.data?.message ?? 'Fehler.');
+    }
+  };
+
   const handleDelete = async (u: User) => {
     if (!confirm(`Benutzer "${u.name}" wirklich löschen?`)) return;
     await adminUserApi.destroy(u.id);
@@ -138,6 +149,7 @@ export default function AdminUsersPage() {
               <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Rolle</th>
               <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Skonto-Gruppe</th>
               <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Erstellt</th>
+              <th className="text-center px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Aktiv</th>
               <th className="px-5 py-3" />
             </tr>
           </thead>
@@ -159,6 +171,17 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="px-5 py-4 text-ink-variant">{u.skonto_group?.name ?? '—'}</td>
                 <td className="px-5 py-4 text-ink-outline">{new Date(u.created_at).toLocaleDateString('de-DE')}</td>
+                <td className="px-5 py-4 text-center">
+                  <button
+                    onClick={() => handleToggleActive(u)}
+                    title={u.is_active ? 'Deaktivieren' : 'Aktivieren'}
+                    className="inline-flex items-center justify-center"
+                  >
+                    <div className={`w-9 h-5 flex items-center rounded-none transition-colors cursor-pointer ${u.is_active ? 'bg-brand-300' : 'bg-surface-low'}`}>
+                      <span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${u.is_active ? 'translate-x-[14px]' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                </td>
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-2 justify-end">
                     <button onClick={() => openEdit(u)} className="p-1.5 hover:bg-surface-low transition-colors">

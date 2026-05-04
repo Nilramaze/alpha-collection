@@ -50,6 +50,7 @@ class UserController extends Controller
             'email'           => 'sometimes|email|unique:users,email,' . $user->id,
             'password'        => 'sometimes|nullable|string|min:8',
             'role'            => 'sometimes|in:admin,user',
+            'is_active'       => 'sometimes|boolean',
             'skonto_group_id' => 'nullable|exists:skonto_groups,id',
         ]);
 
