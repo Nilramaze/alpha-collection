@@ -21,6 +21,9 @@ if [ "$IS_NEW_DB" = true ]; then
     php artisan db:seed --force
 fi
 
+# Storage-Symlink sicherstellen (public/storage → storage/app/public)
+php artisan storage:link --force
+
 # Laravel-Caches für Produktion aufbauen
 php artisan config:cache
 php artisan route:cache
