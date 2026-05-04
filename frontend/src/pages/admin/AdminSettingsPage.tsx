@@ -170,7 +170,7 @@ export default function AdminSettingsPage() {
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [shippingLoading, setShippingLoading] = useState(true);
   const [editingShipId, setEditingShipId] = useState<number | 'new' | null>(null);
-  const [shipForm, setShipForm] = useState({ name: '', price: '0', min_order_value: '0', max_order_value: '' });
+  const [shipForm, setShipForm] = useState({ name: '', price: '0', min_order_qty: '0', max_order_qty: '' });
   const [shipImageFile, setShipImageFile] = useState<File | null>(null);
   const [shipImagePreview, setShipImagePreview] = useState<string | null>(null);
   const [shipSaving, setShipSaving] = useState(false);
@@ -366,13 +366,13 @@ export default function AdminSettingsPage() {
   };
 
   // ── Shipping handlers ──────────────────────────────────────────
-  const EMPTY_SHIP = { name: '', price: '0', min_order_value: '0', max_order_value: '' };
+  const EMPTY_SHIP = { name: '', price: '0', min_order_qty: '0', max_order_qty: '' };
 
   const openEditShip = (opt: ShippingOption | null) => {
     setShipImageFile(null); setShipImagePreview(null);
     if (opt) {
       setEditingShipId(opt.id);
-      setShipForm({ name: opt.name, price: String(opt.price), min_order_value: String(opt.min_order_value), max_order_value: opt.max_order_value != null ? String(opt.max_order_value) : '' });
+      setShipForm({ name: opt.name, price: String(opt.price), min_order_qty: String(opt.min_order_qty), max_order_qty: opt.max_order_qty != null ? String(opt.max_order_qty) : '' });
     } else {
       setEditingShipId('new');
       setShipForm(EMPTY_SHIP);
@@ -400,8 +400,8 @@ export default function AdminSettingsPage() {
       const fd = new FormData();
       fd.append('name', shipForm.name);
       fd.append('price', shipForm.price);
-      fd.append('min_order_value', shipForm.min_order_value || '0');
-      if (shipForm.max_order_value) fd.append('max_order_value', shipForm.max_order_value);
+      fd.append('min_order_qty', shipForm.min_order_qty || '0');
+      if (shipForm.max_order_qty) fd.append('max_order_qty', shipForm.max_order_qty);
       if (shipImageFile) fd.append('image', shipImageFile);
       if (editingShipId === 'new') { await adminShippingApi.create(fd); }
       else { await adminShippingApi.update(editingShipId as number, fd); }
@@ -624,7 +624,7 @@ export default function AdminSettingsPage() {
           </button>
         </div>
         <p className="text-sm text-ink-variant mb-6">
-          Versandoptionen werden dem Kunden im Warenkorb angezeigt. Verfügbarkeit basiert auf dem Bestellwert.
+          Versandoptionen werden dem Kunden im Warenkorb angezeigt. Verfügbarkeit basiert auf der Stückzahl im Warenkorb.
         </p>
 
         {/* New form */}
@@ -661,7 +661,7 @@ export default function AdminSettingsPage() {
                   </span>
                   {/* Availability hint */}
                   <span className="text-[10px] text-ink-faint shrink-0 hidden sm:block">
-                    ab {Number(opt.min_order_value).toFixed(0)} €{opt.max_order_value != null ? ` bis ${Number(opt.max_order_value).toFixed(0)} €` : ''}
+                    ab {opt.min_order_qty} Stk.{opt.max_order_qty != null ? ` bis ${opt.max_order_qty} Stk.` : ''}
                   </span>
                   {/* Toggle */}
                   <div onClick={() => handleToggleShip(opt, !opt.active)} className={`w-9 h-5 flex items-center rounded-none transition-colors cursor-pointer shrink-0 ${opt.active ? 'bg-brand-300' : 'bg-surface-low'}`}>
@@ -957,7 +957,7 @@ function AnnouncementEditFields({
 function ShippingEditFields({
   form, onChange, imageRef, imagePreview, onImageChange,
 }: {
-  form: { name: string; price: string; min_order_value: string; max_order_value: string };
+  form: { name: string; price: string; min_order_qty: string; max_order_qty: string };
   onChange: (patch: Partial<typeof form>) => void;
   imageRef: { current: HTMLInputElement | null };
   imagePreview: string | null;
@@ -975,12 +975,12 @@ function ShippingEditFields({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Mindestbestellwert (€)</label>
-          <input type="number" min="0" step="0.01" value={form.min_order_value} onChange={(e) => onChange({ min_order_value: e.target.value })} placeholder="0" className="input-field w-full" />
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Mindestbestellmenge (Stk.)</label>
+          <input type="number" min="0" step="1" value={form.min_order_qty} onChange={(e) => onChange({ min_order_qty: e.target.value })} placeholder="0" className="input-field w-full" />
         </div>
         <div>
-          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Maximalbestellwert (€, leer = kein Max)</label>
-          <input type="number" min="0" step="0.01" value={form.max_order_value} onChange={(e) => onChange({ max_order_value: e.target.value })} placeholder="kein Maximum" className="input-field w-full" />
+          <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-1">Maximalbestellmenge (Stk., leer = kein Max)</label>
+          <input type="number" min="0" step="1" value={form.max_order_qty} onChange={(e) => onChange({ max_order_qty: e.target.value })} placeholder="kein Maximum" className="input-field w-full" />
         </div>
       </div>
       <div>

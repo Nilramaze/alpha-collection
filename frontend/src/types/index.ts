@@ -63,8 +63,8 @@ export interface ShippingOption {
   name: string;
   price: number;
   image_url: string | null;
-  min_order_value: number;
-  max_order_value: number | null;
+  min_order_qty: number;
+  max_order_qty: number | null;
   active?: boolean;
   sort_order?: number;
 }

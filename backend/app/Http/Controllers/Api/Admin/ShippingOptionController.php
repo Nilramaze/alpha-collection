@@ -19,22 +19,22 @@ class ShippingOptionController extends Controller
     public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'name'            => 'required|string|max:100',
-            'price'           => 'required|numeric|min:0',
-            'image'           => 'nullable|image|max:2048',
-            'min_order_value' => 'nullable|numeric|min:0',
-            'max_order_value' => 'nullable|numeric|min:0',
+            'name'          => 'required|string|max:100',
+            'price'         => 'required|numeric|min:0',
+            'image'         => 'nullable|image|max:2048',
+            'min_order_qty' => 'nullable|integer|min:0',
+            'max_order_qty' => 'nullable|integer|min:0',
         ]);
 
         $maxOrder = ShippingOption::max('sort_order') ?? -1;
 
         $option = ShippingOption::create([
-            'name'            => $request->input('name'),
-            'price'           => $request->input('price', 0),
-            'min_order_value' => $request->input('min_order_value', 0),
-            'max_order_value' => $request->filled('max_order_value') ? $request->input('max_order_value') : null,
-            'active'          => true,
-            'sort_order'      => $maxOrder + 1,
+            'name'          => $request->input('name'),
+            'price'         => $request->input('price', 0),
+            'min_order_qty' => $request->input('min_order_qty', 0),
+            'max_order_qty' => $request->filled('max_order_qty') ? $request->input('max_order_qty') : null,
+            'active'        => true,
+            'sort_order'    => $maxOrder + 1,
         ]);
 
         if ($request->hasFile('image')) {
@@ -48,19 +48,19 @@ class ShippingOptionController extends Controller
     public function update(Request $request, ShippingOption $shippingOption): JsonResponse
     {
         $request->validate([
-            'name'            => 'sometimes|required|string|max:100',
-            'price'           => 'sometimes|required|numeric|min:0',
-            'image'           => 'nullable|image|max:2048',
-            'min_order_value' => 'nullable|numeric|min:0',
-            'max_order_value' => 'nullable|numeric|min:0',
+            'name'          => 'sometimes|required|string|max:100',
+            'price'         => 'sometimes|required|numeric|min:0',
+            'image'         => 'nullable|image|max:2048',
+            'min_order_qty' => 'nullable|integer|min:0',
+            'max_order_qty' => 'nullable|integer|min:0',
         ]);
 
         $data = [];
-        foreach (['name', 'price', 'min_order_value'] as $field) {
+        foreach (['name', 'price', 'min_order_qty'] as $field) {
             if ($request->has($field)) $data[$field] = $request->input($field);
         }
-        if ($request->has('max_order_value')) {
-            $data['max_order_value'] = $request->filled('max_order_value') ? $request->input('max_order_value') : null;
+        if ($request->has('max_order_qty')) {
+            $data['max_order_qty'] = $request->filled('max_order_qty') ? $request->input('max_order_qty') : null;
         }
         if ($request->has('active')) {
             $data['active'] = $request->boolean('active');
@@ -90,14 +90,14 @@ class ShippingOptionController extends Controller
     private function fmt(ShippingOption $s): array
     {
         return [
-            'id'              => $s->id,
-            'name'            => $s->name,
-            'price'           => (float) $s->price,
-            'image_url'       => $s->image_url,
-            'min_order_value' => (float) $s->min_order_value,
-            'max_order_value' => $s->max_order_value !== null ? (float) $s->max_order_value : null,
-            'active'          => $s->active,
-            'sort_order'      => $s->sort_order,
+            'id'            => $s->id,
+            'name'          => $s->name,
+            'price'         => (float) $s->price,
+            'image_url'     => $s->image_url,
+            'min_order_qty' => (int) $s->min_order_qty,
+            'max_order_qty' => $s->max_order_qty !== null ? (int) $s->max_order_qty : null,
+            'active'        => $s->active,
+            'sort_order'    => $s->sort_order,
         ];
     }
 }
