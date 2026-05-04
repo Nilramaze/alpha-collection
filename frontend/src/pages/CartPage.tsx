@@ -16,19 +16,19 @@ export default function CartPage() {
   useEffect(() => { fetchCart(); }, [fetchCart]);
 
   useEffect(() => {
-    const total = skonto?.final_price ?? 0;
-    if (total > 0) {
-      shippingApi.list(total).then(({ data }) => {
+    const qty = cart?.item_count ?? 0;
+    if (qty > 0) {
+      shippingApi.list(qty).then(({ data }) => {
         const opts: ShippingOption[] = data.data;
         setShippingOptions(opts);
         if (opts.length === 1) setSelectedShipping(opts[0]);
-        else setSelectedShipping(null);
+        else setSelectedShipping(prev => opts.find(o => o.id === prev?.id) ?? null);
       });
     } else {
       setShippingOptions([]);
       setSelectedShipping(null);
     }
-  }, [skonto?.final_price]);
+  }, [cart?.item_count]);
 
   const handlePlaceOrder = async () => {
     if (shippingOptions.length > 0 && !selectedShipping) {

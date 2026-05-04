@@ -68,8 +68,8 @@ export const cartApi = {
 
 // ── Shipping Options ─────────────────────────────────
 export const shippingApi = {
-  list: (cartTotal: number) =>
-    api.get('/shipping-options', { params: { cart_total: cartTotal } }),
+  list: (cartQty: number) =>
+    api.get('/shipping-options', { params: { cart_qty: cartQty } }),
 };
 
 export const adminShippingApi = {

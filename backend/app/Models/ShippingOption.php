@@ -8,24 +8,24 @@ class ShippingOption extends Model
 {
     protected $fillable = [
         'name', 'price', 'image_url',
-        'min_order_value', 'max_order_value',
+        'min_order_qty', 'max_order_qty',
         'active', 'sort_order',
     ];
 
     protected $casts = [
-        'price'           => 'decimal:2',
-        'min_order_value' => 'decimal:2',
-        'max_order_value' => 'decimal:2',
-        'active'          => 'boolean',
+        'price'         => 'decimal:2',
+        'min_order_qty' => 'integer',
+        'max_order_qty' => 'integer',
+        'active'        => 'boolean',
     ];
 
-    public function scopeAvailableFor(mixed $query, float $cartTotal): mixed
+    public function scopeAvailableFor(mixed $query, int $cartQty): mixed
     {
         return $query->where('active', true)
-            ->where('min_order_value', '<=', $cartTotal)
-            ->where(function ($q) use ($cartTotal) {
-                $q->whereNull('max_order_value')
-                  ->orWhere('max_order_value', '>=', $cartTotal);
+            ->where('min_order_qty', '<=', $cartQty)
+            ->where(function ($q) use ($cartQty) {
+                $q->whereNull('max_order_qty')
+                  ->orWhere('max_order_qty', '>=', $cartQty);
             })
             ->orderBy('sort_order')
             ->orderBy('price');
