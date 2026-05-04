@@ -1,0 +1,6 @@
+.env
+public/storage
+vendor/
+storage/framework/cache/data/
+storage/logs/*.log
+bootstrap/cache/*.php

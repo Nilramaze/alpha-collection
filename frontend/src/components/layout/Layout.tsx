@@ -295,6 +295,24 @@ export default function Layout() {
           </div>
         </header>
 
+        {/* Inaktiv-Banner */}
+        {user && !isAuthenticated && (
+          <div className="bg-amber-50 border-b border-amber-200 px-6 lg:px-10 py-3 flex items-start gap-3">
+            <span className="material-symbols-outlined text-amber-600 text-[20px] mt-0.5 shrink-0">lock_clock</span>
+            <div className="text-sm text-amber-800">
+              <span className="font-bold">Konto noch nicht freigeschaltet.</span>{' '}
+              Bitte kontaktieren Sie den Shopinhaber, um Ihren Zugang zu aktivieren.{' '}
+              <a href="mailto:alpha.optics@gmx.net" className="font-semibold underline hover:no-underline">
+                alpha.optics@gmx.net
+              </a>
+              {' · '}
+              <a href="tel:+493083225031" className="font-semibold underline hover:no-underline">
+                +49 30 8322 5031
+              </a>
+            </div>
+          </div>
+        )}
+
         {/* Page content */}
         <main className="flex-1 px-6 lg:px-10 py-8 overflow-auto">
           <Outlet />

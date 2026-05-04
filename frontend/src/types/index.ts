@@ -3,6 +3,7 @@ export interface User {
   name: string;
   email: string;
   role: 'user' | 'admin';
+  is_active: boolean;
   skonto_group?: SkontoGroup | null;
   delivery_company: string | null;
   delivery_street: string | null;

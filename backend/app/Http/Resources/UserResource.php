@@ -14,6 +14,7 @@ class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'role' => $this->role,
+            'is_active' => (bool) $this->is_active,
             'skonto_group' => $this->whenLoaded('skontoGroup', function () {
                 return [
                     'id' => $this->skontoGroup->id,
