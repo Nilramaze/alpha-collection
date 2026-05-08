@@ -16,13 +16,13 @@ export default function ImpressumPage() {
             12205 Berlin
           </p>
           <p className="text-sm text-ink leading-relaxed mt-3">
-            <span className="font-semibold">Geschäftsführer:</span> Dr. Schuzhang HUANG
+            <span className="font-semibold">Geschäftsführer:</span> Dr. Shuzhang Huang
           </p>
         </div>
 
         <div>
           <h3 className="text-sm font-bold text-ink mb-2">Inhaltlich verantwortlich</h3>
-          <p className="text-sm text-ink-variant">Dr. Schuzhang HUANG</p>
+          <p className="text-sm text-ink-variant">Dr. Shuzhang Huang</p>
         </div>
 
         <div>
