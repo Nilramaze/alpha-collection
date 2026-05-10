@@ -66,7 +66,7 @@ export default function ProductCard({ product, onOpenModal }: Props) {
       {/* Image */}
       <div className="relative aspect-[4/3] bg-surface-low overflow-hidden flex items-center justify-center">
         {activeImage ? (
-          <img src={activeImage} alt={product.name} className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300" />
+          <img src={activeImage} alt={product.name} className="w-full h-full object-contain group-hover:scale-[1.02] transition-transform duration-300" />
         ) : (
           <span className="material-symbols-outlined text-6xl text-ink-faint/30">eyeglasses</span>
         )}
@@ -126,9 +126,6 @@ export default function ProductCard({ product, onOpenModal }: Props) {
             <span className={clsx('w-2 h-2 rounded-full shrink-0', stock.dot)} />
             <span className={clsx('text-[11px] font-semibold', stock.text)}>
               {stock.label}
-              {activeStock !== null && (
-                <span className="text-ink-outline font-normal ml-1">({activeStock.toLocaleString('de-DE')} Stk.)</span>
-              )}
             </span>
           </div>
         )}

@@ -127,6 +127,11 @@ export default function AdminSettingsPage() {
   const [notificationEmail, setNotificationEmail] = useState('');
   const [notifyOnOrder, setNotifyOnOrder] = useState(false);
   const [notifyOnMessage, setNotifyOnMessage] = useState(false);
+  const [colorPageBg, setColorPageBg] = useState('#f0f0ee');
+  const [colorTopbar, setColorTopbar] = useState('#0e0e0e');
+  const [colorSidebar, setColorSidebar] = useState('#0e0e0e');
+  const [colorAccent, setColorAccent] = useState('#8eff71');
+  const [mwstRate, setMwstRate] = useState(19);
 
   // ── Categories ────────────────────────────────────────────────
   const [categories, setCategories] = useState<CategoryRow[]>([]);
@@ -200,6 +205,11 @@ export default function AdminSettingsPage() {
       setNotificationEmail(data.data.notification_email ?? '');
       setNotifyOnOrder(data.data.notify_on_order ?? false);
       setNotifyOnMessage(data.data.notify_on_message ?? false);
+      setColorPageBg(data.data.color_page_bg ?? '#f0f0ee');
+      setColorTopbar(data.data.color_topbar ?? '#0e0e0e');
+      setColorSidebar(data.data.color_sidebar ?? '#0e0e0e');
+      setColorAccent(data.data.color_accent ?? '#8eff71');
+      setMwstRate(data.data.mwst_rate ?? 19);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -237,8 +247,17 @@ export default function AdminSettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await adminSettingsApi.update({ stock_green_min: greenMin, stock_yellow_min: yellowMin,
-        notification_email: notificationEmail, notify_on_order: notifyOnOrder, notify_on_message: notifyOnMessage });
+      await adminSettingsApi.update({
+        stock_green_min: greenMin, stock_yellow_min: yellowMin,
+        notification_email: notificationEmail, notify_on_order: notifyOnOrder, notify_on_message: notifyOnMessage,
+        color_page_bg: colorPageBg, color_topbar: colorTopbar, color_sidebar: colorSidebar, color_accent: colorAccent,
+        mwst_rate: mwstRate,
+      });
+      // Apply colors immediately to CSS variables
+      document.documentElement.style.setProperty('--color-page-bg', colorPageBg);
+      document.documentElement.style.setProperty('--color-topbar', colorTopbar);
+      document.documentElement.style.setProperty('--color-sidebar', colorSidebar);
+      document.documentElement.style.setProperty('--color-accent', colorAccent);
       toast.success('Einstellungen gespeichert.');
     } catch { toast.error('Fehler beim Speichern.'); } finally { setSaving(false); }
   };
@@ -469,6 +488,60 @@ export default function AdminSettingsPage() {
       <div className="mb-2">
         <h1 className="text-4xl font-extrabold tracking-tighter text-ink font-headline">Einstellungen</h1>
         <p className="text-ink-variant mt-1">Systemweite Konfiguration</p>
+      </div>
+
+      {/* ── Erscheinungsbild / Farben ──────────────── */}
+      <div className="bg-white p-8">
+        <h2 className="text-lg font-bold text-ink font-headline mb-1">Erscheinungsbild</h2>
+        <p className="text-sm text-ink-variant mb-6">Hintergrund-, Menü- und Akzentfarben der Oberfläche anpassen.</p>
+        {loading ? (
+          <div className="space-y-4">{[...Array(4)].map((_, i) => <div key={i} className="h-12 bg-surface-low animate-pulse" />)}</div>
+        ) : (
+          <div className="space-y-5">
+            {[
+              { label: 'Seitenhintergrund', value: colorPageBg, set: setColorPageBg },
+              { label: 'Obere Menüleiste', value: colorTopbar, set: setColorTopbar },
+              { label: 'Seitliche Menüleiste', value: colorSidebar, set: setColorSidebar },
+              { label: 'Akzentfarbe', value: colorAccent, set: setColorAccent },
+            ].map(({ label, value, set }) => (
+              <div key={label}>
+                <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-2">{label}</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={value}
+                    onChange={(e) => set(e.target.value)}
+                    className="w-10 h-10 cursor-pointer border border-surface-low bg-transparent p-0.5 rounded-none"
+                  />
+                  <input
+                    type="text"
+                    value={value}
+                    onChange={(e) => set(e.target.value)}
+                    placeholder="#0e0e0e"
+                    className="input-field w-36 text-sm font-mono py-2"
+                  />
+                  <div className="w-8 h-8 border border-surface-low" style={{ backgroundColor: value }} />
+                </div>
+              </div>
+            ))}
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-variant block mb-2">MwSt.-Satz (%)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="0" max="100" step="0.1"
+                  value={mwstRate}
+                  onChange={(e) => setMwstRate(parseFloat(e.target.value) || 0)}
+                  className="input-field w-32"
+                />
+                <span className="text-sm text-ink-variant">% (wird im Warenkorb angezeigt)</span>
+              </div>
+            </div>
+            <button onClick={handleSave} disabled={saving} className="btn-primary px-6 py-3 disabled:opacity-50">
+              {saving ? 'Speichern...' : 'Einstellungen speichern'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ── Lagerbestand-Ampel ─────────────────────── */}

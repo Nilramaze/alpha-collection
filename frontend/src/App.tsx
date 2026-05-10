@@ -17,6 +17,7 @@ import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import ProfilePage from './pages/ProfilePage';
 import ImpressumPage from './pages/ImpressumPage';
 import ZertifikatePage from './pages/ZertifikatePage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading, user } = useAuthStore();
@@ -60,6 +61,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/passwort-reset" element={<ResetPasswordPage />} />
       <Route path="/" element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="produkte" element={<ProductsPage />} />

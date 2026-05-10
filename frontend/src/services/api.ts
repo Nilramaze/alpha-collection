@@ -35,12 +35,16 @@ export default api;
 
 // ── Auth ────────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post('/login', { email, password }),
+  login: (identifier: string, password: string) =>
+    api.post('/login', { identifier, password }),
   register: (name: string, email: string, password: string, password_confirmation: string) =>
     api.post('/register', { name, email, password, password_confirmation }),
   logout: () => api.post('/logout'),
   me: () => api.get('/me'),
+  forgotPassword: (email: string) =>
+    api.post('/forgot-password', { email }),
+  resetPassword: (email: string, token: string, password: string, password_confirmation: string) =>
+    api.post('/reset-password', { email, token, password, password_confirmation }),
 };
 
 // ── Products ────────────────────────────────────
@@ -90,8 +94,8 @@ export const orderApi = {
     api.get('/orders', { params }),
   get: (id: number) =>
     api.get(`/orders/${id}`),
-  create: (notes?: string, shippingOptionId?: number | null) =>
-    api.post('/orders', { notes, shipping_option_id: shippingOptionId ?? null }),
+  create: (notes?: string, shippingOptionId?: number | null, paymentMethod?: string | null) =>
+    api.post('/orders', { notes, shipping_option_id: shippingOptionId ?? null, payment_method: paymentMethod ?? null }),
 };
 
 // ── Address ──────────────────────────────────────
@@ -131,6 +135,10 @@ export const adminProductApi = {
   destroy: (id: number) => api.delete(`/admin/products/${id}`),
 };
 
+export const publicSettingsApi = {
+  get: () => api.get('/settings/public'),
+};
+
 export const adminSettingsApi = {
   get: () => api.get('/admin/settings'),
   update: (data: {
@@ -139,6 +147,11 @@ export const adminSettingsApi = {
     notification_email?: string;
     notify_on_order?: boolean;
     notify_on_message?: boolean;
+    color_page_bg?: string;
+    color_topbar?: string;
+    color_sidebar?: string;
+    color_accent?: string;
+    mwst_rate?: number;
   }) => api.put('/admin/settings', data),
 };
 

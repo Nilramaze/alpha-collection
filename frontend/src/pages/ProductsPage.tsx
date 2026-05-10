@@ -42,10 +42,6 @@ export default function ProductsPage() {
   return (
     <div>
       <div className="mb-8">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-2 h-2 rounded-full bg-brand-300 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-500">Live-Bestandsstatus</span>
-        </div>
         <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter text-ink leading-[0.95] font-headline">
           Optische <span className="text-brand-300 italic">Präzision.</span>
         </h1>

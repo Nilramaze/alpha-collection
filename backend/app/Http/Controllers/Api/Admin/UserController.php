@@ -29,10 +29,12 @@ class UserController extends Controller
     {
         $data = $request->validate([
             'name'            => 'required|string|max:255',
+            'username'        => 'nullable|string|max:255|unique:users,username',
             'email'           => 'required|email|unique:users,email',
             'password'        => 'required|string|min:8',
             'role'            => 'required|in:admin,user',
             'skonto_group_id' => 'nullable|exists:skonto_groups,id',
+            'sepa_enabled'    => 'nullable|boolean',
         ]);
 
         $user = User::create([
@@ -47,10 +49,12 @@ class UserController extends Controller
     {
         $data = $request->validate([
             'name'            => 'sometimes|string|max:255',
+            'username'        => 'sometimes|nullable|string|max:255|unique:users,username,' . $user->id,
             'email'           => 'sometimes|email|unique:users,email,' . $user->id,
             'password'        => 'sometimes|nullable|string|min:8',
             'role'            => 'sometimes|in:admin,user',
             'is_active'       => 'sometimes|boolean',
+            'sepa_enabled'    => 'sometimes|boolean',
             'skonto_group_id' => 'nullable|exists:skonto_groups,id',
         ]);
 

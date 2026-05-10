@@ -12,9 +12,11 @@ class UserResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'username' => $this->username,
             'email' => $this->email,
             'role' => $this->role,
             'is_active' => (bool) $this->is_active,
+            'sepa_enabled' => (bool) $this->sepa_enabled,
             'skonto_group' => $this->whenLoaded('skontoGroup', function () {
                 return [
                     'id' => $this->skontoGroup->id,

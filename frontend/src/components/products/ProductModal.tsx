@@ -62,7 +62,7 @@ export default function ProductModal({ product, onClose }: Props) {
           {/* Image */}
           <div className="md:w-1/2 aspect-square bg-surface-low flex items-center justify-center">
             {activeImage ? (
-              <img src={activeImage} alt={product.name} className="w-full h-full object-cover transition-all duration-200" />
+              <img src={activeImage} alt={product.name} className="w-full h-full object-contain transition-all duration-200" />
             ) : (
               <span className="material-symbols-outlined text-8xl text-ink-faint/20">eyeglasses</span>
             )}
@@ -113,15 +113,12 @@ export default function ProductModal({ product, onClose }: Props) {
                           }`}
                         >
                           {c.image_url && (
-                            <img src={c.image_url} alt={c.name} className="w-8 h-8 object-cover shrink-0" />
+                            <img src={c.image_url} alt={c.name} className="w-8 h-8 object-contain shrink-0" />
                           )}
                           <span className="flex-1 font-medium text-ink">{c.name}</span>
                           {isAuthenticated && (
                             <span className="flex items-center gap-1.5 shrink-0">
                               <span className={`w-1.5 h-1.5 rounded-full ${STOCK_DOT[st]}`} />
-                              <span className="text-[11px] text-ink-outline">
-                                {c.stock_quantity?.toLocaleString('de-DE') ?? 0} Stk.
-                              </span>
                             </span>
                           )}
                         </button>
@@ -142,8 +139,12 @@ export default function ProductModal({ product, onClose }: Props) {
                     </div>
                     {activeStockStatus && (
                       <div className="text-right">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-ink-outline">Verfügbar</div>
-                        <div className="text-sm font-bold text-ink">{activeStock?.toLocaleString('de-DE') ?? 0} Stk.</div>
+                        <div className={`text-[10px] font-bold uppercase tracking-[0.15em] ${
+                          activeStockStatus === 'green' ? 'text-green-600' :
+                          activeStockStatus === 'yellow' ? 'text-amber-600' : 'text-red-600'
+                        }`}>
+                          {activeStockStatus === 'green' ? 'Auf Lager' : activeStockStatus === 'yellow' ? 'Begrenzt' : 'Ausverkauft'}
+                        </div>
                       </div>
                     )}
                   </div>
