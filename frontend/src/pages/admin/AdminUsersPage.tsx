@@ -4,8 +4,9 @@ import toast from 'react-hot-toast';
 
 interface SkontoGroup { id: number; name: string; }
 interface User {
-  id: number; name: string; email: string; role: string;
+  id: number; name: string; username: string | null; email: string; role: string;
   is_active: boolean;
+  sepa_enabled: boolean;
   skonto_group: { id: number; name: string } | null;
   delivery_company: string | null;
   delivery_street: string | null;
@@ -54,7 +55,7 @@ function UserAddressBlock({ user }: { user: User }) {
   );
 }
 
-const emptyForm = { name: '', email: '', password: '', role: 'user', skonto_group_id: '' };
+const emptyForm = { name: '', username: '', email: '', password: '', role: 'user', skonto_group_id: '', sepa_enabled: false };
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -78,14 +79,14 @@ export default function AdminUsersPage() {
 
   const openCreate = () => { setForm(emptyForm); setModal({ open: true, user: null }); };
   const openEdit = (u: User) => {
-    setForm({ name: u.name, email: u.email, password: '', role: u.role, skonto_group_id: u.skonto_group?.id?.toString() ?? '' });
+    setForm({ name: u.name, username: u.username ?? '', email: u.email, password: '', role: u.role, skonto_group_id: u.skonto_group?.id?.toString() ?? '', sepa_enabled: u.sepa_enabled });
     setModal({ open: true, user: u });
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const payload: Record<string, any> = { ...form, skonto_group_id: form.skonto_group_id || null };
+      const payload: Record<string, any> = { ...form, skonto_group_id: form.skonto_group_id || null, username: form.username || null };
       if (!payload.password) delete payload.password;
       if (modal.user) {
         await adminUserApi.update(modal.user.id, payload);
@@ -149,6 +150,7 @@ export default function AdminUsersPage() {
               <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Rolle</th>
               <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Skonto-Gruppe</th>
               <th className="text-left px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Erstellt</th>
+              <th className="text-center px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">SEPA</th>
               <th className="text-center px-5 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-ink-variant">Aktiv</th>
               <th className="px-5 py-3" />
             </tr>
@@ -171,6 +173,22 @@ export default function AdminUsersPage() {
                 </td>
                 <td className="px-5 py-4 text-ink-variant">{u.skonto_group?.name ?? '—'}</td>
                 <td className="px-5 py-4 text-ink-outline">{new Date(u.created_at).toLocaleDateString('de-DE')}</td>
+                <td className="px-5 py-4 text-center">
+                  <button
+                    onClick={async () => {
+                      try {
+                        await adminUserApi.update(u.id, { sepa_enabled: !u.sepa_enabled });
+                        setUsers(prev => prev.map(x => x.id === u.id ? { ...x, sepa_enabled: !u.sepa_enabled } : x));
+                      } catch (e: any) { toast.error(e.response?.data?.message ?? 'Fehler.'); }
+                    }}
+                    title={u.sepa_enabled ? 'SEPA deaktivieren' : 'SEPA aktivieren'}
+                    className="inline-flex items-center justify-center"
+                  >
+                    <div className={`w-9 h-5 flex items-center rounded-none transition-colors cursor-pointer ${u.sepa_enabled ? 'bg-brand-300' : 'bg-surface-low'}`}>
+                      <span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${u.sepa_enabled ? 'translate-x-[14px]' : 'translate-x-0'}`} />
+                    </div>
+                  </button>
+                </td>
                 <td className="px-5 py-4 text-center">
                   <button
                     onClick={() => handleToggleActive(u)}
@@ -210,6 +228,10 @@ export default function AdminUsersPage() {
                 <input className="input-field" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               </div>
               <div>
+                <label className="label-caps">Benutzername <span className="normal-case font-normal text-ink-outline">(optional, für Login ohne E-Mail)</span></label>
+                <input className="input-field" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} placeholder="z. B. händler123" />
+              </div>
+              <div>
                 <label className="label-caps">E-Mail</label>
                 <input type="email" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </div>
@@ -230,6 +252,18 @@ export default function AdminUsersPage() {
                   <option value="">Keine</option>
                   {skontoGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
                 </select>
+              </div>
+              <div>
+                <label className="label-caps">SEPA-Lastschrift</label>
+                <label className="flex items-center gap-3 cursor-pointer select-none mt-1">
+                  <div
+                    onClick={() => setForm({ ...form, sepa_enabled: !form.sepa_enabled })}
+                    className={`w-10 h-5 flex items-center rounded-none transition-colors cursor-pointer ${form.sepa_enabled ? 'bg-brand-300' : 'bg-surface-low'}`}
+                  >
+                    <span className={`w-4 h-4 bg-white shadow transition-transform mx-0.5 ${form.sepa_enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                  <span className="text-sm text-ink">Einzugsermächtigung / SEPA aktiviert</span>
+                </label>
               </div>
             </div>
             {modal.user && <UserAddressBlock user={modal.user} />}

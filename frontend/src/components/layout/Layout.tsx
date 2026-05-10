@@ -3,7 +3,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useCartStore } from '../../stores/cartStore';
 import { useEffect, useState, useRef } from 'react';
 import clsx from 'clsx';
-import { productApi } from '../../services/api';
+import { productApi, publicSettingsApi } from '../../services/api';
 import type { Category } from '../../types';
 
 const navLinkCls = ({ isActive }: { isActive: boolean }) => clsx(
@@ -12,6 +12,20 @@ const navLinkCls = ({ isActive }: { isActive: boolean }) => clsx(
     ? 'text-brand-200 bg-brand-200/5 border-l-[3px] border-brand-200 -ml-px'
     : 'text-[#9c9d9d] hover:text-white hover:bg-white/[0.03]'
 );
+
+interface AppColors {
+  pageBg: string;
+  topbar: string;
+  sidebar: string;
+  accent: string;
+}
+
+const DEFAULT_COLORS: AppColors = {
+  pageBg: '#f0f0ee',
+  topbar: '#0e0e0e',
+  sidebar: '#0e0e0e',
+  accent: '#8eff71',
+};
 
 export default function Layout() {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -24,11 +38,21 @@ export default function Layout() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [sortimentOpen, setSortimentOpen] = useState(false);
   const sortimentRef = useRef<HTMLDivElement>(null);
+  const [colors, setColors] = useState<AppColors>(DEFAULT_COLORS);
 
   const isSortimentActive = location.pathname.startsWith('/produkte');
 
   useEffect(() => {
     productApi.categories().then(({ data }) => setCategories(data.data));
+    publicSettingsApi.get().then(({ data }) => {
+      const c = data.data;
+      setColors({
+        pageBg: c.color_page_bg || DEFAULT_COLORS.pageBg,
+        topbar: c.color_topbar || DEFAULT_COLORS.topbar,
+        sidebar: c.color_sidebar || DEFAULT_COLORS.sidebar,
+        accent: c.color_accent || DEFAULT_COLORS.accent,
+      });
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -72,12 +96,15 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex bg-surface">
+    <div className="min-h-screen flex" style={{ backgroundColor: colors.pageBg }}>
       {/* ── Sidebar ─────────────────────────────── */}
-      <aside className={clsx(
-        'fixed lg:sticky top-0 left-0 z-40 h-screen w-[220px] bg-[#0e0e0e] flex flex-col transition-transform lg:translate-x-0',
-        mobileOpen ? 'translate-x-0' : '-translate-x-full'
-      )}>
+      <aside
+        className={clsx(
+          'fixed lg:sticky top-0 left-0 z-40 h-screen w-[220px] flex flex-col transition-transform lg:translate-x-0',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        style={{ backgroundColor: colors.sidebar }}
+      >
         {/* Brand */}
         <div className="p-6 pb-2">
           <img src="/alpha_White_1.png" alt="Alpha Collection" className="h-12 w-auto" />
@@ -152,11 +179,11 @@ export default function Layout() {
             </NavLink>
           )}
 
-          {/* Kontakt */}
+          {/* Kontakt & Reklamationen */}
           {isAuthenticated && (
             <NavLink to="/kontakt" onClick={() => setMobileOpen(false)} className={navLinkCls}>
-              <span className="material-symbols-outlined text-[20px]">group</span>
-              Kontakt
+              <span className="material-symbols-outlined text-[20px]">support_agent</span>
+              Kontakt & Reklamationen
             </NavLink>
           )}
 
@@ -220,7 +247,7 @@ export default function Layout() {
       {/* ── Main Content ────────────────────────── */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 bg-[#0e0e0e] h-20 flex items-center justify-between px-6 lg:px-10 border-l-2 border-[#888888]">
+        <header className="sticky top-0 z-20 h-20 flex items-center justify-between px-6 lg:px-10 border-l-2 border-[#888888]" style={{ backgroundColor: colors.topbar }}>
           <button className="lg:hidden" onClick={() => setMobileOpen(true)}>
             <span className="material-symbols-outlined text-white">menu</span>
           </button>

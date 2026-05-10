@@ -28,6 +28,11 @@ use Illuminate\Support\Facades\Route;
 */
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
+// Public settings (colors, mwst-rate)
+Route::get('/settings/public', [AdminSettingsController::class, 'publicIndex']);
 
 // Announcements (public – only enabled ones)
 Route::get('/announcements', [AnnouncementController::class, 'index']);

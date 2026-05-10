@@ -35,8 +35,8 @@ export default function ContactPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tighter text-ink font-headline">Kontakt & Nachrichten</h1>
-          <p className="text-sm text-ink-variant mt-1">Kommunizieren Sie direkt mit unserem Vertriebsteam.</p>
+          <h1 className="text-3xl font-extrabold tracking-tighter text-ink font-headline">Kontakt & Reklamationen</h1>
+          <p className="text-sm text-ink-variant mt-1">Für allgemeine Anfragen, Reklamationen und Rücksendungen — direkt an unser Vertriebsteam.</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} className="btn-primary py-3 px-6">
           <span className="material-symbols-outlined text-base">{showForm ? 'close' : 'edit'}</span>
@@ -51,7 +51,7 @@ export default function ContactPage() {
             <div>
               <label className="label-caps">Betreff</label>
               <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)}
-                className="input-field" placeholder="z.B. Anfrage zu Großbestellung" required />
+                className="input-field" placeholder="z. B. Reklamation Bestellung #AC-00123" required />
             </div>
             <div>
               <label className="label-caps">Nachricht</label>
@@ -70,7 +70,8 @@ export default function ContactPage() {
       ) : messages.length === 0 ? (
         <div className="text-center py-20 bg-white">
           <span className="material-symbols-outlined text-6xl text-ink-faint/20 mb-4">chat_bubble</span>
-          <p className="text-ink-variant">Noch keine Nachrichten.</p>
+          <p className="text-ink-variant mb-2">Noch keine Nachrichten.</p>
+          <p className="text-xs text-ink-faint">Nutzen Sie diesen Bereich für Kontaktanfragen, Reklamationen und Rücksendungen.</p>
         </div>
       ) : (
         <div className="space-y-2">

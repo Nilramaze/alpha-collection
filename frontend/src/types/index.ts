@@ -1,9 +1,11 @@
 export interface User {
   id: number;
   name: string;
+  username: string | null;
   email: string;
   role: 'user' | 'admin';
   is_active: boolean;
+  sepa_enabled: boolean;
   skonto_group?: SkontoGroup | null;
   delivery_company: string | null;
   delivery_street: string | null;
@@ -169,6 +171,7 @@ export interface Order {
   skonto_discount: number;
   final_price: number;
   notes: string | null;
+  payment_method: 'rechnung' | 'sepa' | null;
   shipping_name: string | null;
   shipping_price: number;
   user?: OrderUser;

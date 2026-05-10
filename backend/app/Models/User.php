@@ -16,10 +16,12 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'role',
         'is_active',
+        'sepa_enabled',
         'skonto_group_id',
         'delivery_company',
         'delivery_street',
@@ -46,6 +48,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'billing_same_as_delivery' => 'boolean',
             'is_active' => 'boolean',
+            'sepa_enabled' => 'boolean',
         ];
     }
 

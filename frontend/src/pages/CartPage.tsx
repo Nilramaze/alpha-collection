@@ -1,17 +1,23 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCartStore } from '../stores/cartStore';
+import { useAuthStore } from '../stores/authStore';
 import { orderApi, shippingApi } from '../services/api';
 import type { ShippingOption } from '../types';
 import toast from 'react-hot-toast';
 
 export default function CartPage() {
   const { cart, skonto, isLoading, fetchCart, updateItem, removeItem } = useCartStore();
+  const { user } = useAuthStore();
   const [placing, setPlacing] = useState(false);
   const [notes, setNotes] = useState('');
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'rechnung' | 'sepa'>('rechnung');
+  const [showConfirm, setShowConfirm] = useState(false);
   const navigate = useNavigate();
+
+  const sepaEnabled = user?.sepa_enabled ?? false;
 
   useEffect(() => { fetchCart(); }, [fetchCart]);
 
@@ -31,26 +37,37 @@ export default function CartPage() {
   }, [cart?.item_count]);
 
   const handlePlaceOrder = async () => {
-    if (shippingOptions.length > 0 && !selectedShipping) {
-      toast.error('Bitte eine Versandoption wählen.');
-      return;
-    }
     setPlacing(true);
     try {
-      const { data } = await orderApi.create(notes || undefined, selectedShipping?.id ?? null);
+      const { data } = await orderApi.create(
+        notes || undefined,
+        selectedShipping?.id ?? null,
+        sepaEnabled ? paymentMethod : 'rechnung',
+      );
       toast.success('Bestellung erfolgreich aufgegeben!');
       await fetchCart();
       navigate(`/bestellungen/${data.data.id}`);
     } catch (err: any) {
       toast.error(err.response?.data?.message || 'Bestellung fehlgeschlagen.');
-    } finally { setPlacing(false); }
+    } finally {
+      setPlacing(false);
+      setShowConfirm(false);
+    }
   };
 
   const fmt = (n: number) => n.toFixed(2).replace('.', ',') + ' €';
   const items = cart?.items ?? [];
+
+  // MwSt-Kalkulation: Netto → + MwSt → + Versand → − Skonto
+  const MWST = 0.19;
+  const nettoSum = skonto?.total_price ?? 0;
+  const mwstAmount = nettoSum * MWST;
+  const bruttoSum = nettoSum + mwstAmount;
   const shippingPrice = selectedShipping?.price ?? 0;
-  const cartFinal = skonto?.final_price ?? 0;
-  const grandTotal = cartFinal + shippingPrice;
+  const preSkonto = bruttoSum + shippingPrice;
+  const discountPct = skonto?.discount_percent ?? 0;
+  const skontoAmount = preSkonto * (discountPct / 100);
+  const grandTotal = preSkonto - skontoAmount;
 
   if (isLoading && !cart) {
     return <div className="space-y-4">{[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-surface-low animate-pulse" />)}</div>;
@@ -86,7 +103,7 @@ export default function CartPage() {
                   <div className="col-span-12 md:col-span-5 flex items-center gap-4">
                     <div className="w-16 h-16 bg-surface-low flex items-center justify-center shrink-0 overflow-hidden">
                       {displayImage
-                        ? <img src={displayImage} alt={item.product.name} className="w-full h-full object-cover" />
+                        ? <img src={displayImage} alt={item.product.name} className="w-full h-full object-contain" />
                         : <span className="material-symbols-outlined text-2xl text-ink-faint/30">eyeglasses</span>
                       }
                     </div>
@@ -114,7 +131,14 @@ export default function CartPage() {
                   </div>
                   <div className="col-span-4 md:col-span-2 text-right flex items-center justify-end gap-3">
                     <span className="text-sm font-bold text-ink">{fmt(item.subtotal)}</span>
-                    <button onClick={() => removeItem(item.product_id, item.product_color_id ?? undefined)} className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => {
+                        if (confirm(`"${item.product.name}" aus dem Warenkorb entfernen?`)) {
+                          removeItem(item.product_id, item.product_color_id ?? undefined);
+                        }
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
                       <span className="material-symbols-outlined text-ink-faint hover:text-red-500 text-[18px] transition-colors">delete</span>
                     </button>
                   </div>
@@ -129,20 +153,15 @@ export default function CartPage() {
               <h3 className="text-lg font-extrabold tracking-tight text-ink font-headline">Bestellübersicht</h3>
 
               {/* Price breakdown */}
-              <div className="space-y-3 text-sm">
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-ink-variant">Zwischensumme</span>
-                  <span className="font-semibold text-ink">{fmt(skonto?.total_price ?? 0)}</span>
+                  <span className="text-ink-variant">Netto-Summe</span>
+                  <span className="font-semibold text-ink">{fmt(nettoSum)}</span>
                 </div>
-                {skonto && skonto.discount_percent > 0 && (
-                  <div className="flex justify-between text-brand-500">
-                    <span className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm">percent</span>
-                      Skonto ({skonto.discount_percent}%)
-                    </span>
-                    <span className="font-semibold">-{fmt(skonto.skonto_discount)}</span>
-                  </div>
-                )}
+                <div className="flex justify-between text-ink-variant">
+                  <span>MwSt. 19 %</span>
+                  <span className="font-semibold">{fmt(mwstAmount)}</span>
+                </div>
                 {selectedShipping && (
                   <div className="flex justify-between text-ink-variant">
                     <span className="flex items-center gap-1">
@@ -152,6 +171,15 @@ export default function CartPage() {
                     <span className="font-semibold text-ink">
                       {selectedShipping.price === 0 ? 'Kostenlos' : fmt(selectedShipping.price)}
                     </span>
+                  </div>
+                )}
+                {discountPct > 0 && (
+                  <div className="flex justify-between text-brand-500">
+                    <span className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm">percent</span>
+                      Skonto ({discountPct} %)
+                    </span>
+                    <span className="font-semibold">-{fmt(skontoAmount)}</span>
                   </div>
                 )}
                 <div className="h-px bg-surface-low" />
@@ -207,6 +235,43 @@ export default function CartPage() {
                 </div>
               )}
 
+              {/* SEPA / Zahlungsart (nur wenn vom Admin freigeschaltet) */}
+              {sepaEnabled && (
+                <div>
+                  <label className="label-caps">Zahlungsart</label>
+                  <div className="space-y-2 mt-1">
+                    {(['rechnung', 'sepa'] as const).map((method) => (
+                      <label
+                        key={method}
+                        className={`flex items-center gap-3 p-3 cursor-pointer border transition-colors ${
+                          paymentMethod === method ? 'border-brand-300 bg-brand-50' : 'border-surface-low hover:border-ink-faint'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="payment"
+                          value={method}
+                          checked={paymentMethod === method}
+                          onChange={() => setPaymentMethod(method)}
+                          className="sr-only"
+                        />
+                        <span className="material-symbols-outlined text-[22px] text-ink-variant shrink-0">
+                          {method === 'rechnung' ? 'receipt' : 'account_balance'}
+                        </span>
+                        <span className="flex-1 text-sm font-semibold text-ink">
+                          {method === 'rechnung' ? 'Rechnung' : 'SEPA-Lastschrift'}
+                        </span>
+                        <div className={`w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                          paymentMethod === method ? 'border-brand-300' : 'border-ink-faint'
+                        }`}>
+                          {paymentMethod === method && <div className="w-2 h-2 rounded-full bg-brand-300" />}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Notes */}
               <div>
                 <label className="label-caps">Anmerkungen (optional)</label>
@@ -216,18 +281,118 @@ export default function CartPage() {
               </div>
 
               <button
-                onClick={handlePlaceOrder}
-                disabled={placing || items.length === 0 || (shippingOptions.length > 0 && !selectedShipping)}
+                onClick={() => {
+                  if (shippingOptions.length > 0 && !selectedShipping) {
+                    toast.error('Bitte eine Versandoption wählen.');
+                    return;
+                  }
+                  setShowConfirm(true);
+                }}
+                disabled={items.length === 0 || (shippingOptions.length > 0 && !selectedShipping)}
                 className="btn-primary w-full py-4 disabled:opacity-50"
               >
-                {placing
-                  ? <span className="animate-pulse">Bestellung wird aufgegeben...</span>
-                  : <><span className="material-symbols-outlined filled text-base">shopping_bag</span><span>Bestellung aufgeben</span></>
-                }
+                <span className="material-symbols-outlined filled text-base">shopping_bag</span>
+                <span>Bestellung abschließen</span>
               </button>
               <p className="text-[10px] text-ink-faint text-center leading-relaxed">
-                Mit der Bestellung senden Sie eine verbindliche Anfrage. Die Zahlung erfolgt auf Rechnung.
+                Im nächsten Schritt können Sie Ihre Bestellung prüfen und bestätigen.
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Bestellbestätigung Modal ──────────────── */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowConfirm(false)} />
+          <div className="relative bg-white w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="p-8">
+              <h2 className="text-2xl font-extrabold tracking-tighter text-ink font-headline mb-1">Bestellung bestätigen</h2>
+              <p className="text-sm text-ink-variant mb-6">Bitte prüfen Sie Ihre Bestellung vor der finalen Aufgabe.</p>
+
+              {/* Positionen */}
+              <div className="space-y-2 mb-6">
+                {items.map((item) => (
+                  <div key={item.id} className="flex justify-between text-sm">
+                    <span className="text-ink">
+                      {item.product.name}
+                      {item.color_name && <span className="text-ink-outline"> · {item.color_name}</span>}
+                      <span className="text-ink-outline ml-1">× {item.quantity}</span>
+                    </span>
+                    <span className="font-semibold text-ink shrink-0 ml-4">{fmt(item.subtotal)}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Kostenübersicht */}
+              <div className="border-t border-surface-low pt-4 space-y-2 text-sm mb-6">
+                <div className="flex justify-between text-ink-variant">
+                  <span>Netto-Summe</span><span>{fmt(nettoSum)}</span>
+                </div>
+                <div className="flex justify-between text-ink-variant">
+                  <span>MwSt. 19 %</span><span>{fmt(mwstAmount)}</span>
+                </div>
+                {selectedShipping && (
+                  <div className="flex justify-between text-ink-variant">
+                    <span>Versand ({selectedShipping.name})</span>
+                    <span>{selectedShipping.price === 0 ? 'Kostenlos' : fmt(selectedShipping.price)}</span>
+                  </div>
+                )}
+                {discountPct > 0 && (
+                  <div className="flex justify-between text-brand-500">
+                    <span>Skonto ({discountPct} %)</span>
+                    <span>-{fmt(skontoAmount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-extrabold text-ink text-base border-t border-surface-low pt-2 mt-2">
+                  <span>Gesamtbetrag</span>
+                  <span>{fmt(grandTotal)}</span>
+                </div>
+              </div>
+
+              {/* Versand + Zahlung */}
+              {(selectedShipping || notes || sepaEnabled) && (
+                <div className="bg-surface-low p-4 text-xs space-y-1 mb-6">
+                  {selectedShipping && (
+                    <div className="flex gap-2">
+                      <span className="text-ink-outline w-20 shrink-0">Versand</span>
+                      <span className="text-ink font-medium">{selectedShipping.name}</span>
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <span className="text-ink-outline w-20 shrink-0">Zahlung</span>
+                    <span className="text-ink font-medium">
+                      {sepaEnabled && paymentMethod === 'sepa' ? 'SEPA-Lastschrift' : 'Rechnung'}
+                    </span>
+                  </div>
+                  {notes && (
+                    <div className="flex gap-2">
+                      <span className="text-ink-outline w-20 shrink-0">Anmerkung</span>
+                      <span className="text-ink">{notes}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handlePlaceOrder}
+                  disabled={placing}
+                  className="btn-primary flex-1 py-3.5 disabled:opacity-50"
+                >
+                  {placing
+                    ? <span className="animate-pulse">Wird aufgegeben...</span>
+                    : <><span className="material-symbols-outlined filled text-base">check_circle</span><span>Jetzt verbindlich bestellen</span></>
+                  }
+                </button>
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="px-5 py-3.5 border border-surface-low text-ink-variant hover:bg-surface-low transition-colors text-sm font-semibold"
+                >
+                  Zurück
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -4,12 +4,14 @@ import { productApi, announcementApi } from '../services/api';
 import { useAuthStore } from '../stores/authStore';
 import type { Announcement, Product } from '../types';
 import ProductCard from '../components/products/ProductCard';
+import ProductModal from '../components/products/ProductModal';
 
 export default function HomePage() {
   const { isAuthenticated } = useAuthStore();
   const [featured, setFeatured] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
     productApi.featured()
@@ -52,7 +54,7 @@ export default function HomePage() {
 
             {ann.image_url && (
               <div className="w-full md:w-80 lg:w-96 shrink-0">
-                <img src={ann.image_url} alt="" className="w-full h-64 md:h-72 object-cover" />
+                <img src={ann.image_url} alt="" className="w-full h-64 md:h-72 object-contain" />
               </div>
             )}
           </div>
@@ -64,7 +66,7 @@ export default function HomePage() {
                 .filter((url): url is string => Boolean(url))
                 .map((url, i) => (
                   <div key={i} className="flex-1">
-                    <img src={url} alt="" className="w-full h-40 object-cover" />
+                    <img src={url} alt="" className="w-full h-40 object-contain" />
                   </div>
                 ))}
             </div>
@@ -74,12 +76,6 @@ export default function HomePage() {
 
       {/* ── Hero Section ──────────────────────────── */}
       <section>
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full bg-brand-300 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-brand-500">
-            Live-Bestandsstatus
-          </span>
-        </div>
         <h1 className="text-5xl md:text-7xl font-extrabold tracking-tighter text-ink leading-[0.95] font-headline">
           Optische <span className="text-brand-300 italic">Präzision.</span>
         </h1>
@@ -144,7 +140,7 @@ export default function HomePage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {featured.slice(0, 8).map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} onOpenModal={setSelectedProduct} />
             ))}
           </div>
         )}
@@ -175,6 +171,10 @@ export default function HomePage() {
             </div>
           </div>
         </section>
+      )}
+
+      {selectedProduct && (
+        <ProductModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
       )}
     </div>
   );
