@@ -24,10 +24,10 @@ class InvoiceService
         $pdf = Pdf::loadView($view, $data);
         $pdf->setPaper('A4', 'portrait');
 
-        $output = $pdf->output();
-        Log::info('[Invoice] dompdf output() fertig, Größe: ' . strlen((string) $output));
+        $output = (string) $pdf->output();
+        Log::info('[Invoice] dompdf output() fertig, Größe: ' . strlen($output) . ' Bytes, Anfang: ' . substr($output, 0, 5));
 
-        return (string) $output;
+        return $output;
     }
 
     private function buildInvoiceData(Order $order, User $user): array
