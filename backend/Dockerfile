@@ -4,9 +4,10 @@ RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
     libzip-dev \
     libicu-dev \
+    libxml2-dev \
     zip \
     unzip \
-    && docker-php-ext-install pdo pdo_sqlite zip intl \
+    && docker-php-ext-install pdo pdo_sqlite zip intl dom xml \
     && a2enmod rewrite \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
