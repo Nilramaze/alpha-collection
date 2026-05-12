@@ -5,21 +5,29 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 
 class InvoiceService
 {
     public function generatePdf(Order $order, User $user): string
     {
+        Log::info('[Invoice] PHP ext-dom geladen: ' . (extension_loaded('dom') ? 'ja' : 'NEIN'));
+        Log::info('[Invoice] PHP ext-xml geladen: ' . (extension_loaded('xml') ? 'ja' : 'NEIN'));
+
         $data = $this->buildInvoiceData($order, $user);
 
         $view = $user->sepa_enabled
             ? 'invoices.invoice-sepa'
             : 'invoices.invoice';
 
+        Log::info("[Invoice] Lade View: {$view}");
         $pdf = Pdf::loadView($view, $data);
         $pdf->setPaper('A4', 'portrait');
 
-        return $pdf->output();
+        $output = $pdf->output();
+        Log::info('[Invoice] dompdf output() fertig, Größe: ' . strlen((string) $output));
+
+        return (string) $output;
     }
 
     private function buildInvoiceData(Order $order, User $user): array
