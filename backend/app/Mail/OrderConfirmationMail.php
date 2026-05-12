@@ -40,7 +40,7 @@ class OrderConfirmationMail extends Mailable
                  ['mime' => 'application/pdf']
              );
 
-        Log::info('[Invoice] attachData() abgeschlossen');
+        Log::info('[Invoice] attachData() abgeschlossen, rawAttachments Anzahl: ' . count($this->rawAttachments));
 
         return $this;
     }
