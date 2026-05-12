@@ -34,28 +34,14 @@ class OrderConfirmationMail extends Mailable
     {
         $orderNumber   = 'AC-' . str_pad($this->order->id, 5, '0', STR_PAD_LEFT);
         $invoiceNumber = 'RE-' . $this->order->created_at->format('Y') . '-' . str_pad($this->order->id, 5, '0', STR_PAD_LEFT);
-        $gross         = (float) $this->order->total_price + (float) $this->order->shipping_price;
-        $final         = (float) $this->order->final_price;
-        $discount      = (float) $this->order->skonto_discount;
-        $subtotal      = (float) $this->order->total_price;
-
-        $discountPercent = ($subtotal > 0 && $discount > 0)
-            ? round($discount / $subtotal * 100, 2)
-            : 0;
 
         return new Content(
             view: 'mail.order-confirmation',
             with: [
-                'customerName'    => $this->user->name,
-                'orderNumber'     => $orderNumber,
-                'invoiceNumber'   => $invoiceNumber,
-                'paymentMethod'   => $this->user->sepa_enabled ? 'SEPA-Lastschrift' : 'Rechnung',
-                'grandTotal'      => number_format($gross, 2, ',', '.'),
-                'finalTotal'      => number_format($final, 2, ',', '.'),
-                'isSepa'          => $this->user->sepa_enabled,
-                'hasSkonto'       => $discount > 0,
-                'discountPercent' => $discountPercent,
-                'discountDate'    => $this->order->created_at->addDays(10)->format('d.m.Y'),
+                'customerName'  => $this->user->name,
+                'orderNumber'   => $orderNumber,
+                'invoiceNumber' => $invoiceNumber,
+                'isSepa'        => $this->user->sepa_enabled,
             ],
         );
     }
