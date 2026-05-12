@@ -157,12 +157,32 @@ class OrderService
 
     private function sendCustomerConfirmation(Order $order, User $user): void
     {
-        try {
-            $pdfContent = $this->invoiceService->generatePdf($order, $user);
+        $orderId = 'AC-' . str_pad($order->id, 5, '0', STR_PAD_LEFT);
 
-            Mail::to($user->email)->send(new OrderConfirmationMail($order, $user, $pdfContent));
+        Log::info("[Invoice] Start für {$orderId}, Kunde: {$user->email}, SEPA: " . ($user->sepa_enabled ? 'ja' : 'nein'));
+
+        try {
+            Log::info("[Invoice] Generiere PDF...");
+            $pdfContent = $this->invoiceService->generatePdf($order, $user);
+            Log::info("[Invoice] PDF generiert, Größe: " . strlen($pdfContent) . " Bytes");
         } catch (\Throwable $e) {
-            Log::error('Order confirmation mail failed: ' . $e->getMessage());
+            Log::error("[Invoice] PDF-Generierung fehlgeschlagen: " . $e->getMessage(), [
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return;
+        }
+
+        try {
+            Log::info("[Invoice] Sende Mail an {$user->email}...");
+            Mail::to($user->email)->send(new OrderConfirmationMail($order, $user, $pdfContent));
+            Log::info("[Invoice] Mail erfolgreich gesendet an {$user->email}");
+        } catch (\Throwable $e) {
+            Log::error("[Invoice] Mail-Versand fehlgeschlagen: " . $e->getMessage(), [
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine(),
+            ]);
         }
     }
 
