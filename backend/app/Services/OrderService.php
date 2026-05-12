@@ -158,9 +158,9 @@ class OrderService
     private function sendCustomerConfirmation(Order $order, User $user): void
     {
         try {
-            $pdfPath = $this->invoiceService->generatePdf($order, $user);
+            $pdfContent = $this->invoiceService->generatePdf($order, $user);
 
-            Mail::to($user->email)->send(new OrderConfirmationMail($order, $user, $pdfPath));
+            Mail::to($user->email)->send(new OrderConfirmationMail($order, $user, $pdfContent));
         } catch (\Throwable $e) {
             Log::error('Order confirmation mail failed: ' . $e->getMessage());
         }

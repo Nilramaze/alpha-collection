@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Support\Facades\Storage;
 
 class InvoiceService
 {
@@ -20,12 +19,7 @@ class InvoiceService
         $pdf = Pdf::loadView($view, $data);
         $pdf->setPaper('A4', 'portrait');
 
-        $filename = $data['invoice']['number'] . '.pdf';
-        $path     = 'invoices/' . $filename;
-
-        Storage::put($path, $pdf->output());
-
-        return Storage::path($path);
+        return $pdf->output();
     }
 
     private function buildInvoiceData(Order $order, User $user): array
