@@ -18,7 +18,7 @@ class OrderConfirmationMail extends Mailable
     public function __construct(
         private Order  $order,
         private User   $user,
-        private string $pdfPath,
+        private string $pdfContent,
     ) {}
 
     public function envelope(): Envelope
@@ -49,10 +49,10 @@ class OrderConfirmationMail extends Mailable
     public function attachments(): array
     {
         $invoiceNumber = 'RE-' . $this->order->created_at->format('Y') . '-' . str_pad($this->order->id, 5, '0', STR_PAD_LEFT);
+        $content       = $this->pdfContent;
 
         return [
-            Attachment::fromPath($this->pdfPath)
-                ->as("{$invoiceNumber}.pdf")
+            Attachment::fromData(fn () => $content, "{$invoiceNumber}.pdf")
                 ->withMime('application/pdf'),
         ];
     }
