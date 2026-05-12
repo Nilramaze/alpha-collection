@@ -7,7 +7,7 @@
         @page { size: A4; margin: 20mm; }
 
         body {
-            font-family: DejaVu Sans, Arial, sans-serif;
+            font-family: Helvetica, Arial, sans-serif;
             color: #222;
             font-size: 12px;
             line-height: 1.4;
