@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Models\ShippingOption;
@@ -14,7 +15,8 @@ use Illuminate\Support\Facades\Mail;
 class OrderService
 {
     public function __construct(
-        private CartService $cartService,
+        private CartService    $cartService,
+        private InvoiceService $invoiceService,
     ) {}
 
     public function createOrder(User $user, ?string $notes = null, ?int $shippingOptionId = null): Order
@@ -78,6 +80,7 @@ class OrderService
             $order->load('items.product', 'items.color');
 
             $this->sendOrderNotification($order, $user);
+            $this->sendCustomerConfirmation($order, $user);
 
             return $order;
         });
@@ -149,6 +152,17 @@ class OrderService
             $color->increment('stock_quantity', $qty);
         } else {
             $product->increment('stock_quantity', $qty);
+        }
+    }
+
+    private function sendCustomerConfirmation(Order $order, User $user): void
+    {
+        try {
+            $pdfPath = $this->invoiceService->generatePdf($order, $user);
+
+            Mail::to($user->email)->send(new OrderConfirmationMail($order, $user, $pdfPath));
+        } catch (\Throwable $e) {
+            Log::error('Order confirmation mail failed: ' . $e->getMessage());
         }
     }
 

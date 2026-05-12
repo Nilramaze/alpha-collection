@@ -1,0 +1,63 @@
+@page {
+    size: A4;
+    margin: 20mm;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    color: #222;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.invoice-wrapper {
+    width: 100%;
+}
+
+.invoice-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 40px;
+}
+
+.customer-section {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 40px;
+}
+
+.products-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.products-table thead {
+    display: table-header-group;
+}
+
+.products-table tr {
+    page-break-inside: avoid;
+}
+
+.products-table th,
+.products-table td {
+    border-bottom: 1px solid #ccc;
+    padding: 8px 6px;
+    text-align: left;
+}
+
+.totals-section {
+    margin-top: 30px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.totals-box {
+    width: 320px;
+}
+
+.total-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}

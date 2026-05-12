@@ -1,0 +1,13 @@
+{
+  "invoice": {
+    "number": "RE-2026-001",
+    "date": "12.05.2026"
+  },
+  "customer": {
+    "company": "Optik Beispiel GmbH"
+  },
+  "items": [],
+  "totals": {
+    "grandTotal": "0.00"
+  }
+}
