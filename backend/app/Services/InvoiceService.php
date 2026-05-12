@@ -6,6 +6,7 @@ use App\Models\Order;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class InvoiceService
 {
@@ -26,6 +27,11 @@ class InvoiceService
 
         $output = (string) $pdf->output();
         Log::info('[Invoice] dompdf output() fertig, Größe: ' . strlen($output) . ' Bytes, Anfang: ' . substr($output, 0, 5));
+
+        // PDF zur manuellen Kontrolle speichern
+        $filename = 'invoices/debug-last.pdf';
+        Storage::put($filename, $output);
+        Log::info('[Invoice] Debug-PDF gespeichert: ' . Storage::path($filename));
 
         return $output;
     }
