@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\OrderStatus;
+use App\Mail\AdminOrderNotificationMail;
 use App\Mail\OrderConfirmationMail;
 use App\Models\Order;
 use App\Models\Setting;
@@ -79,8 +80,10 @@ class OrderService
 
             $order->load('items.product', 'items.color');
 
-            $this->sendOrderNotification($order, $user);
-            $this->sendCustomerConfirmation($order, $user);
+            $pdfContent = $this->generatePdfSafely($order, $user);
+
+            $this->sendCustomerConfirmation($order, $user, $pdfContent);
+            $this->sendOrderNotification($order, $user, $pdfContent);
 
             return $order;
         });
@@ -155,64 +158,65 @@ class OrderService
         }
     }
 
-    private function sendCustomerConfirmation(Order $order, User $user): void
+    private function generatePdfSafely(Order $order, User $user): ?string
     {
         $orderId = 'AC-' . str_pad($order->id, 5, '0', STR_PAD_LEFT);
-
-        Log::info("[Invoice] Start für {$orderId}, Kunde: {$user->email}, SEPA: " . ($user->sepa_enabled ? 'ja' : 'nein'));
+        Log::info("[Invoice] Generiere PDF für {$orderId}...");
 
         try {
-            Log::info("[Invoice] Generiere PDF...");
-            $pdfContent = $this->invoiceService->generatePdf($order, $user);
-            Log::info("[Invoice] PDF generiert, Größe: " . strlen($pdfContent) . " Bytes");
+            $pdf = $this->invoiceService->generatePdf($order, $user);
+            Log::info("[Invoice] PDF fertig, Größe: " . strlen($pdf) . " Bytes");
+            return $pdf;
         } catch (\Throwable $e) {
             Log::error("[Invoice] PDF-Generierung fehlgeschlagen: " . $e->getMessage(), [
                 'file'  => $e->getFile(),
                 'line'  => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
             ]);
-            return;
-        }
-
-        try {
-            Log::info("[Invoice] Sende Mail an {$user->email}...");
-            Mail::to($user->email)->send(new OrderConfirmationMail($order, $user, $pdfContent));
-            Log::info("[Invoice] Mail erfolgreich gesendet an {$user->email}");
-        } catch (\Throwable $e) {
-            Log::error("[Invoice] Mail-Versand fehlgeschlagen: " . $e->getMessage(), [
-                'file'  => $e->getFile(),
-                'line'  => $e->getLine(),
-            ]);
+            return null;
         }
     }
 
-    private function sendOrderNotification(Order $order, User $user): void
+    private function sendCustomerConfirmation(Order $order, User $user, ?string $pdfContent): void
+    {
+        if (!$pdfContent) return;
+
+        try {
+            Mail::to($user->email)->send(new OrderConfirmationMail($order, $user, $pdfContent));
+            Log::info("[Invoice] Kundenmail gesendet an {$user->email}");
+        } catch (\Throwable $e) {
+            Log::error("[Invoice] Kundenmail fehlgeschlagen: " . $e->getMessage());
+        }
+    }
+
+    private function sendOrderNotification(Order $order, User $user, ?string $pdfContent): void
     {
         if (!Setting::get('notify_on_order')) return;
 
         $email = Setting::get('notification_email');
         if (!$email) return;
 
-        $orderId  = 'AC-' . str_pad($order->id, 5, '0', STR_PAD_LEFT);
-        $items    = $order->items->map(fn($i) =>
-            '  - ' . ($i->product->name ?? "Produkt #{$i->product_id}")
-            . ($i->color ? " ({$i->color->name})" : '')
-            . " × {$i->quantity}"
-            . "  →  €" . number_format($i->subtotal, 2, ',', '.')
-        )->join("\n");
-
-        $body = "Neue Bestellung eingegangen!\n\n"
-            . "Bestellung: {$orderId}\n"
-            . "Kunde:      {$user->name} <{$user->email}>\n"
-            . "Gesamt:     €" . number_format($order->final_price, 2, ',', '.') . "\n\n"
-            . "Positionen:\n{$items}\n";
-
         try {
-            Mail::raw($body, function ($m) use ($email, $orderId) {
-                $m->to($email)->subject("Neue Bestellung {$orderId}");
-            });
+            if ($pdfContent) {
+                Mail::to($email)->send(new AdminOrderNotificationMail($order, $user, $pdfContent));
+            } else {
+                $orderId = 'AC-' . str_pad($order->id, 5, '0', STR_PAD_LEFT);
+                $items   = $order->items->map(fn ($i) =>
+                    '  - ' . ($i->product->name ?? "Produkt #{$i->product_id}")
+                    . ($i->color ? " ({$i->color->name})" : '')
+                    . " × {$i->quantity}"
+                    . '  →  €' . number_format($i->subtotal, 2, ',', '.')
+                )->join("\n");
+
+                $body = "Neue Bestellung eingegangen!\n\n"
+                    . "Bestellung: {$orderId}\n"
+                    . "Kunde:      {$user->name} <{$user->email}>\n"
+                    . "Gesamt:     €" . number_format($order->final_price, 2, ',', '.') . "\n\n"
+                    . "Positionen:\n{$items}\n";
+
+                Mail::raw($body, fn ($m) => $m->to($email)->subject("Neue Bestellung {$orderId}"));
+            }
         } catch (\Throwable $e) {
-            Log::error('Order notification mail failed: ' . $e->getMessage());
+            Log::error('Admin-Benachrichtigung fehlgeschlagen: ' . $e->getMessage());
         }
     }
 }
