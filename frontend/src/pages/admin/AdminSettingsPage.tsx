@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { adminSettingsApi, adminCategoryApi, adminSkontoApi, adminAnnouncementApi, adminShippingApi, adminCertificateApi } from '../../services/api';
 import type { Announcement, Certificate, ShippingOption } from '../../types';
 import toast from 'react-hot-toast';
+import { applyAccentColor } from '../../utils/accentColor';
 
 // ─────────────────────────────────────────────────────────────────
 // Sortable card component for each announcement row
@@ -130,7 +131,7 @@ export default function AdminSettingsPage() {
   const [colorPageBg, setColorPageBg] = useState('#f0f0ee');
   const [colorTopbar, setColorTopbar] = useState('#0e0e0e');
   const [colorSidebar, setColorSidebar] = useState('#0e0e0e');
-  const [colorAccent, setColorAccent] = useState('#8eff71');
+  const [colorAccent, setColorAccent] = useState('#6b6bdd');
   const [mwstRate, setMwstRate] = useState(19);
 
   // ── Categories ────────────────────────────────────────────────
@@ -208,10 +209,14 @@ export default function AdminSettingsPage() {
       setColorPageBg(data.data.color_page_bg ?? '#f0f0ee');
       setColorTopbar(data.data.color_topbar ?? '#0e0e0e');
       setColorSidebar(data.data.color_sidebar ?? '#0e0e0e');
-      setColorAccent(data.data.color_accent ?? '#8eff71');
+      const accent = data.data.color_accent ?? '#6b6bdd';
+      setColorAccent(accent);
+      applyAccentColor(accent);
       setMwstRate(data.data.mwst_rate ?? 19);
     }).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => { applyAccentColor(colorAccent); }, [colorAccent]);
 
   const loadCategories = () => {
     setCatLoading(true);
@@ -257,7 +262,7 @@ export default function AdminSettingsPage() {
       document.documentElement.style.setProperty('--color-page-bg', colorPageBg);
       document.documentElement.style.setProperty('--color-topbar', colorTopbar);
       document.documentElement.style.setProperty('--color-sidebar', colorSidebar);
-      document.documentElement.style.setProperty('--color-accent', colorAccent);
+      applyAccentColor(colorAccent);
       toast.success('Einstellungen gespeichert.');
     } catch { toast.error('Fehler beim Speichern.'); } finally { setSaving(false); }
   };

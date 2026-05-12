@@ -4,6 +4,7 @@ import { useCartStore } from '../../stores/cartStore';
 import { useEffect, useState, useRef } from 'react';
 import clsx from 'clsx';
 import { productApi, publicSettingsApi } from '../../services/api';
+import { applyAccentColor } from '../../utils/accentColor';
 import type { Category } from '../../types';
 
 const navLinkCls = ({ isActive }: { isActive: boolean }) => clsx(
@@ -24,7 +25,7 @@ const DEFAULT_COLORS: AppColors = {
   pageBg: '#f0f0ee',
   topbar: '#0e0e0e',
   sidebar: '#0e0e0e',
-  accent: '#8eff71',
+  accent: '#6b6bdd',
 };
 
 export default function Layout() {
@@ -46,12 +47,14 @@ export default function Layout() {
     productApi.categories().then(({ data }) => setCategories(data.data));
     publicSettingsApi.get().then(({ data }) => {
       const c = data.data;
+      const accent = c.color_accent || DEFAULT_COLORS.accent;
       setColors({
         pageBg: c.color_page_bg || DEFAULT_COLORS.pageBg,
         topbar: c.color_topbar || DEFAULT_COLORS.topbar,
         sidebar: c.color_sidebar || DEFAULT_COLORS.sidebar,
-        accent: c.color_accent || DEFAULT_COLORS.accent,
+        accent,
       });
+      applyAccentColor(accent);
     }).catch(() => {});
   }, []);
 

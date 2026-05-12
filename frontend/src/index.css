@@ -3,6 +3,19 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --brand-50:  235 235 255;
+    --brand-100: 197 197 255;
+    --brand-200: 107 107 221;
+    --brand-300: 43  43  187;
+    --brand-400: 16  16  159;
+    --brand-500: 0   0   139;
+    --brand-600: 0   0   119;
+    --brand-700: 0   0   96;
+    --brand-800: 0   0   64;
+    --brand-900: 0   0   37;
+  }
+
   body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
