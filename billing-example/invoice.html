@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Rechnung</title>
+    <link rel="stylesheet" href="invoice.css">
+</head>
+<body>
+
+<div class="invoice-wrapper">
+
+    <header class="invoice-header">
+        <div class="company-left">
+            <h1>Alpha Collection</h1>
+            <p>Glarner Strasse 3</p>
+            <p>12205 Berlin, Germany</p>
+            <p>Tel. 0049-30-8322 5031</p>
+            <p>alpha.optics@gmx.net</p>
+        </div>
+
+        <div class="company-right">
+            <p><strong>IBAN:</strong> DE39 7601 0085 0707 3428 55</p>
+            <p><strong>BIC:</strong> PBNKDEFF</p>
+            <p><strong>USt-IdNr:</strong> DE253861264</p>
+        </div>
+    </header>
+
+    <section class="customer-section">
+        <div class="address-block">
+            <h3>Rechnung an</h3>
+
+            <p>{{customer.company}}</p>
+            <p>{{customer.name}}</p>
+            <p>{{customer.street}}</p>
+            <p>{{customer.zip}} {{customer.city}}</p>
+            <p>{{customer.country}}</p>
+        </div>
+
+        <div class="invoice-meta">
+            <table>
+                <tr>
+                    <td>Rechnungsnummer:</td>
+                    <td>{{invoice.number}}</td>
+                </tr>
+                <tr>
+                    <td>Datum:</td>
+                    <td>{{invoice.date}}</td>
+                </tr>
+                <tr>
+                    <td>Kundennummer:</td>
+                    <td>{{customer.number}}</td>
+                </tr>
+                <tr>
+                    <td>Bestellnummer:</td>
+                    <td>{{invoice.orderNumber}}</td>
+                </tr>
+            </table>
+        </div>
+    </section>
+
+    <section class="products-section">
+        <table class="products-table">
+            <thead>
+            <tr>
+                <th>Menge</th>
+                <th>Artikel</th>
+                <th>Beschreibung</th>
+                <th>Einzelpreis</th>
+                <th>Summe</th>
+            </tr>
+            </thead>
+
+            <tbody>
+            {{#each items}}
+            <tr>
+                <td>{{quantity}}</td>
+                <td>{{sku}}</td>
+                <td>{{description}}</td>
+                <td>{{price}} €</td>
+                <td>{{total}} €</td>
+            </tr>
+            {{/each}}
+            </tbody>
+        </table>
+    </section>
+
+    <section class="totals-section">
+
+        <div class="totals-box">
+            <div class="total-row">
+                <span>Zwischensumme:</span>
+                <span>{{totals.subtotal}} €</span>
+            </div>
+
+            <div class="total-row">
+                <span>Versand:</span>
+                <span>{{totals.shipping}} €</span>
+            </div>
+
+            <div class="total-row">
+                <span>MwSt. (19%):</span>
+                <span>{{totals.tax}} €</span>
+            </div>
+
+            <div class="total-row grand-total">
+                <span>Gesamtbetrag:</span>
+                <span>{{totals.grandTotal}} €</span>
+            </div>
+
+            <div class="total-row discount-row">
+                <span>2% Skonto bei Zahlung bis {{invoice.discountDate}}</span>
+                <span>-{{totals.discount}} €</span>
+            </div>
+
+            <div class="total-row final-total">
+                <span>Zu zahlender Betrag:</span>
+                <span>{{totals.finalTotal}} €</span>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+</body>
+</html>
