@@ -19,7 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { adminSettingsApi, adminCategoryApi, adminSkontoApi, adminAnnouncementApi, adminShippingApi, adminCertificateApi } from '../../services/api';
 import type { Announcement, Certificate, ShippingOption } from '../../types';
 import toast from 'react-hot-toast';
-import { applyAccentColor } from '../../utils/accentColor';
+import { applyAccentColor, applyLayoutColors } from '../../utils/accentColor';
 
 // ─────────────────────────────────────────────────────────────────
 // Sortable card component for each announcement row
@@ -217,6 +217,7 @@ export default function AdminSettingsPage() {
   }, []);
 
   useEffect(() => { applyAccentColor(colorAccent); }, [colorAccent]);
+  useEffect(() => { applyLayoutColors(colorPageBg, colorTopbar, colorSidebar); }, [colorPageBg, colorTopbar, colorSidebar]);
 
   const loadCategories = () => {
     setCatLoading(true);
@@ -259,10 +260,6 @@ export default function AdminSettingsPage() {
         mwst_rate: mwstRate,
       });
       // Apply colors immediately to CSS variables
-      document.documentElement.style.setProperty('--color-page-bg', colorPageBg);
-      document.documentElement.style.setProperty('--color-topbar', colorTopbar);
-      document.documentElement.style.setProperty('--color-sidebar', colorSidebar);
-      applyAccentColor(colorAccent);
       toast.success('Einstellungen gespeichert.');
     } catch { toast.error('Fehler beim Speichern.'); } finally { setSaving(false); }
   };

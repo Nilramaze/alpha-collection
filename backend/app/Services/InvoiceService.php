@@ -40,8 +40,9 @@ class InvoiceService
     {
         $orderNumber   = 'AC-' . str_pad($order->id, 5, '0', STR_PAD_LEFT);
         $invoiceNumber = 'RE-' . $order->created_at->format('Y') . '-' . str_pad($order->id, 5, '0', STR_PAD_LEFT);
-        $invoiceDate   = $order->created_at->format('d.m.Y');
-        $discountDate  = $order->created_at->addDays(10)->format('d.m.Y');
+        $invoiceDate     = $order->created_at->format('d.m.Y');
+        $discountDate    = $order->created_at->copy()->addDays(10)->format('d.m.Y');
+        $paymentDueDate  = $order->created_at->copy()->addMonths(1)->format('d.m.Y');
 
         $billingAddress = $this->resolveBillingAddress($user);
 
@@ -74,11 +75,13 @@ class InvoiceService
         })->toArray();
 
         return [
+            'logoPath' => public_path('alpha_White_1.png'),
             'invoice'  => [
-                'number'      => $invoiceNumber,
-                'date'        => $invoiceDate,
-                'orderNumber' => $orderNumber,
-                'discountDate'=> $discountDate,
+                'number'         => $invoiceNumber,
+                'date'           => $invoiceDate,
+                'orderNumber'    => $orderNumber,
+                'discountDate'   => $discountDate,
+                'paymentDueDate' => $paymentDueDate,
             ],
             'customer' => [
                 'name'    => $user->name,
@@ -95,9 +98,10 @@ class InvoiceService
                 'shipping'        => number_format($shipping, 2, ',', '.'),
                 'tax'             => number_format($tax, 2, ',', '.'),
                 'grandTotal'      => number_format($gross, 2, ',', '.'),
-                'discount'        => $discount,
-                'discountPercent' => $discountPercent,
-                'finalTotal'      => number_format($final, 2, ',', '.'),
+                'discount'          => $discount,
+                'discountFormatted' => number_format($discount, 2, ',', '.'),
+                'discountPercent'   => $discountPercent,
+                'finalTotal'        => number_format($final, 2, ',', '.'),
             ],
         ];
     }

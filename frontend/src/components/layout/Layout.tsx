@@ -4,7 +4,7 @@ import { useCartStore } from '../../stores/cartStore';
 import { useEffect, useState, useRef } from 'react';
 import clsx from 'clsx';
 import { productApi, publicSettingsApi } from '../../services/api';
-import { applyAccentColor } from '../../utils/accentColor';
+import { applyAccentColor, applyLayoutColors } from '../../utils/accentColor';
 import type { Category } from '../../types';
 
 const navLinkCls = ({ isActive }: { isActive: boolean }) => clsx(
@@ -47,14 +47,13 @@ export default function Layout() {
     productApi.categories().then(({ data }) => setCategories(data.data));
     publicSettingsApi.get().then(({ data }) => {
       const c = data.data;
-      const accent = c.color_accent || DEFAULT_COLORS.accent;
-      setColors({
-        pageBg: c.color_page_bg || DEFAULT_COLORS.pageBg,
-        topbar: c.color_topbar || DEFAULT_COLORS.topbar,
-        sidebar: c.color_sidebar || DEFAULT_COLORS.sidebar,
-        accent,
-      });
+      const accent  = c.color_accent  || DEFAULT_COLORS.accent;
+      const pageBg  = c.color_page_bg || DEFAULT_COLORS.pageBg;
+      const topbar  = c.color_topbar  || DEFAULT_COLORS.topbar;
+      const sidebar = c.color_sidebar || DEFAULT_COLORS.sidebar;
+      setColors({ pageBg, topbar, sidebar, accent });
       applyAccentColor(accent);
+      applyLayoutColors(pageBg, topbar, sidebar);
     }).catch(() => {});
   }, []);
 
@@ -99,14 +98,14 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: colors.pageBg }}>
+    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--color-page-bg)' }}>
       {/* ── Sidebar ─────────────────────────────── */}
       <aside
         className={clsx(
           'fixed lg:sticky top-0 left-0 z-40 h-screen w-[220px] flex flex-col transition-transform lg:translate-x-0',
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         )}
-        style={{ backgroundColor: colors.sidebar }}
+        style={{ backgroundColor: 'var(--color-sidebar)' }}
       >
         {/* Brand */}
         <div className="p-6 pb-2">
@@ -250,7 +249,7 @@ export default function Layout() {
       {/* ── Main Content ────────────────────────── */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Top bar */}
-        <header className="sticky top-0 z-20 h-20 flex items-center justify-between px-6 lg:px-10 border-l-2 border-[#888888]" style={{ backgroundColor: colors.topbar }}>
+        <header className="sticky top-0 z-20 h-20 flex items-center justify-between px-6 lg:px-10 border-l-2 border-[#888888]" style={{ backgroundColor: 'var(--color-topbar)' }}>
           <button className="lg:hidden" onClick={() => setMobileOpen(true)}>
             <span className="material-symbols-outlined text-white">menu</span>
           </button>

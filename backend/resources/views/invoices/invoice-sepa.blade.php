@@ -62,6 +62,18 @@
 
 <div class="invoice-wrapper">
 
+    {{-- Logo-Header --}}
+    <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
+        <tr>
+            <td style="background:#0e0e0e; padding:12px 16px; width:50%;">
+                <img src="{{ $logoPath }}" style="height:28px; width:auto;" alt="Alpha Collection" />
+            </td>
+            <td style="background:#0e0e0e; padding:12px 16px; width:50%; text-align:right; color:#aaa; font-size:10px; vertical-align:middle;">
+                IBAN: DE39 7601 0085 0707 3428 55 &nbsp;|&nbsp; BIC: PBNKDEFF &nbsp;|&nbsp; USt-IdNr: DE253861264
+            </td>
+        </tr>
+    </table>
+
     {{-- Header --}}
     <table class="layout-table">
         <tr>
@@ -164,10 +176,20 @@
     <div class="payment-section">
         <p class="sepa-badge">SEPA-Lastschrift</p>
         <p>
-            Der Rechnungsbetrag von <strong>{{ $totals['grandTotal'] }} €</strong> wird im Rahmen des
-            SEPA-Lastschriftverfahrens von Ihrem Konto eingezogen. Bitte sorgen Sie für ausreichende Kontodeckung.
+            Die Brillenfassungen und diese Rechnung werden am <strong>{{ $invoice['date'] }}</strong> versendet.
+            Die gelieferten Waren bleiben bis zur vollständigen Bezahlung Eigentum der Firma Alpha Collection.
+            Das Eigentumsrecht wird anerkannt und akzeptiert, wenn die gelieferten Waren innerhalb von 14 Tagen
+            nicht zurück an Alpha Collection zugestellt werden.
+            Wir buchen den Rechnungsbetrag im Laufe der nächsten drei Wochen von Ihrem Konto ab.
         </p>
-        <p>
+        @if($totals['discount'] > 0)
+        <p style="margin-top:8px;">
+            {{ $totals['discountPercent'] }}% Rabatt ({{ $totals['discountFormatted'] }} €)
+            für die Einzugsermächtigung.
+            Der Rechnungsbetrag beträgt: {{ $totals['grandTotal'] }} € - {{ $totals['discountFormatted'] }} € = <strong>{{ $totals['finalTotal'] }} €</strong>.
+        </p>
+        @endif
+        <p style="margin-top:8px; color:#666;">
             Gläubiger-Identifikationsnummer: DE98ZZZ09999999999 &nbsp;|&nbsp;
             Mandatsreferenz: {{ $customer['number'] }}
         </p>

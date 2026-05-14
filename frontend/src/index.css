@@ -4,6 +4,10 @@
 
 @layer base {
   :root {
+    --color-page-bg: #f0f0ee;
+    --color-topbar:  #0e0e0e;
+    --color-sidebar: #0e0e0e;
+
     --brand-50:  235 235 255;
     --brand-100: 197 197 255;
     --brand-200: 107 107 221;
