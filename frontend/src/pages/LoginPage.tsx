@@ -63,24 +63,11 @@ export default function LoginPage() {
             <img src="/alpha_White_1.png" alt="Alpha Collection" className="h-10 w-auto" />
           </div>
           <h1 className="text-6xl font-extrabold tracking-tighter text-white mb-8 leading-[0.95] font-headline">
-            Das Wholesale<br />
-            <span className="text-brand-200 italic">Precision</span> Portal.
+            Alpha<span className="text-brand-200 italic">Collection</span>
           </h1>
           <p className="text-lg text-[#ababab] max-w-md font-body leading-relaxed">
             Zugang zu unserem kuratierten Saisonsortiment und globaler Distribution mit architektonischer Präzision.
           </p>
-        </div>
-        <div className="grid grid-cols-2 gap-8">
-          <div className="bg-[#131313] p-8 border border-[#484848]/20">
-            <span className="material-symbols-outlined filled text-brand-200 mb-4">inventory_2</span>
-            <div className="text-2xl font-bold tracking-tight text-white">4.2k+</div>
-            <div className="text-[0.65rem] text-[#ababab] uppercase tracking-widest font-semibold">Artikel gelistet</div>
-          </div>
-          <div className="bg-[#131313] p-8 border border-[#484848]/20">
-            <span className="material-symbols-outlined filled text-brand-200 mb-4">public</span>
-            <div className="text-2xl font-bold tracking-tight text-white">120+</div>
-            <div className="text-[0.65rem] text-[#ababab] uppercase tracking-widest font-semibold">Globale Lager</div>
-          </div>
         </div>
       </div>
     </div>
@@ -318,18 +305,6 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div className="mt-16 pt-16 border-t border-surface-low flex flex-col gap-8">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-outline">Vertraut von</span>
-              <div className="h-[1px] flex-grow mx-4 bg-surface-low" />
-            </div>
-            <div className="flex justify-between opacity-40 grayscale gap-6 overflow-hidden">
-              <span className="font-headline font-black text-lg">MODERNIST</span>
-              <span className="font-headline font-black text-lg">STRUX</span>
-              <span className="font-headline font-black text-lg">KINETIC</span>
-              <span className="font-headline font-black text-lg">BASE</span>
-            </div>
-          </div>
         </div>
 
         <footer className="mt-auto py-8 flex justify-between items-center text-[10px] font-bold uppercase tracking-[0.15em] text-ink-outline max-w-md mx-auto w-full">

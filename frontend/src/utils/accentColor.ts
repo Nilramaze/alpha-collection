@@ -45,6 +45,13 @@ function hslToRgbChannels(h: number, s: number, l: number): string {
   return `${r} ${g} ${b}`;
 }
 
+export function applyLayoutColors(pageBg: string, topbar: string, sidebar: string): void {
+  const root = document.documentElement;
+  root.style.setProperty('--color-page-bg', pageBg);
+  root.style.setProperty('--color-topbar',  topbar);
+  root.style.setProperty('--color-sidebar', sidebar);
+}
+
 export function applyAccentColor(hex: string): void {
   if (!/^#[0-9a-f]{6}$/i.test(hex)) return;
 
