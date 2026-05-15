@@ -14,6 +14,8 @@ class InvoiceService
     {
         Log::info('[Invoice] PHP ext-dom geladen: ' . (extension_loaded('dom') ? 'ja' : 'NEIN'));
         Log::info('[Invoice] PHP ext-xml geladen: ' . (extension_loaded('xml') ? 'ja' : 'NEIN'));
+        Log::info('[Invoice] PHP ext-gd geladen: ' . (extension_loaded('gd') ? 'ja' : 'NEIN'));
+        Log::info('[Invoice] PHP ext-mbstring geladen: ' . (extension_loaded('mbstring') ? 'ja' : 'NEIN'));
 
         $data = $this->buildInvoiceData($order, $user);
 
