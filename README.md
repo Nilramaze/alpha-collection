@@ -32,14 +32,14 @@ alpha-collection/
 ## Setup
 
 ### Voraussetzungen
-PHP 8.2+, Composer, Node 18+, MySQL 8
+PHP 8.2+, Composer, Node 18+ (Datenbank: SQLite)
 
 ### Backend
 ```bash
 cd backend
 composer install
 cp .env.example .env && php artisan key:generate
-# DB konfigurieren in .env
+touch database/database.sqlite
 php artisan migrate && php artisan db:seed
 php artisan serve
 ```
@@ -48,6 +48,13 @@ php artisan serve
 ```bash
 cd frontend
 npm install && npm run dev
+```
+`/api` und `/storage` werden vom Vite-Dev-Server an `localhost:8000` weitergeleitet – eine `frontend/.env` ist lokal nicht nötig.
+
+### Deployment (Docker)
+```bash
+cp .env.docker.example .env.docker   # Domain, APP_KEY, Mail-Zugang eintragen
+docker compose up -d --build
 ```
 
 ### URLs

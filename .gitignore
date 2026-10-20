@@ -1,0 +1,10 @@
+# Env-Dateien mit echten Werten nie committen – nur die *.example-Vorlagen
+.env
+.env.docker
+
+# Abhängigkeiten werden im Docker-Build installiert
+node_modules/
+vendor/
+
+# Lokale Datenbank
+*.sqlite
